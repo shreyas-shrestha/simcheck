@@ -6,6 +6,7 @@ SubprocessRunner  fallback when Docker is unavailable. A separate `python -I` pr
                   environment and a temp cwd. This is NOT isolation and every report says so.
 InProcessRunner   trusted code only (reference, broken variants). Same JSON round-trip, no process.
 """
+import atexit
 import json
 import queue
 import shutil
@@ -13,6 +14,8 @@ import subprocess
 import sys
 import tempfile
 import threading
+import uuid
+import weakref
 from collections import deque
 from pathlib import Path
 
@@ -102,11 +105,15 @@ class DockerRunner(_ProcRunner):
 
     def __init__(self, solution_path, public_dir=None, image=IMAGE, call_timeout=30.0):
         self.tmp = tempfile.mkdtemp(prefix="simcheck_dock_")
+        # Named, so close() can kill the CONTAINER. Killing only the local `docker run` client leaves
+        # the container running (e.g. a hung agent keeps burning CPU after a timeout).
+        self.name = f"simcheck-{uuid.uuid4().hex[:12]}"
         agent = Path(self.tmp) / "agent"
         agent.mkdir()
         shutil.copy(solution_path, agent / "solution.py")
         shutil.copy(WORKER, agent / "agent_worker.py")
-        argv = ["docker", "run", "--rm", "-i", "--network", "none", "--read-only", "--tmpfs", "/tmp",
+        argv = ["docker", "run", "--rm", "-i", "--name", self.name,
+                "--network", "none", "--read-only", "--tmpfs", "/tmp",
                 "--memory", "2g", "--cpus", "2", "--pids-limit", "256", "--user", "65534:65534",
                 "-v", f"{agent}:/agent:ro"]
         if public_dir is not None:
@@ -115,6 +122,7 @@ class DockerRunner(_ProcRunner):
             argv += ["-v", f"{pub}:/public:ro"]
         argv += [image, "python", "-I", "/agent/agent_worker.py", "/agent/solution.py"]
         super().__init__(argv, {"PATH": "/usr/local/bin:/usr/bin:/bin"}, self.tmp, call_timeout)
+        _LIVE_DOCKER.add(self)
 
     @staticmethod
     def available(image=IMAGE):
@@ -124,9 +132,27 @@ class DockerRunner(_ProcRunner):
         except (OSError, subprocess.TimeoutExpired):
             return False
 
+    def kill_container(self):
+        try:  # no-op error if it already exited (--rm removes it)
+            subprocess.run(["docker", "kill", self.name], capture_output=True, timeout=30)
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+
     def close(self):
+        self.kill_container()
         super().close()
+        _LIVE_DOCKER.discard(self)
         shutil.rmtree(self.tmp, ignore_errors=True)
+
+
+_LIVE_DOCKER = weakref.WeakSet()
+
+
+@atexit.register
+def _kill_leftover_containers():
+    """If the verifier process exits without closing a runner, don't leave its container behind."""
+    for r in list(_LIVE_DOCKER):
+        r.kill_container()
 
 
 class InProcessRunner:
