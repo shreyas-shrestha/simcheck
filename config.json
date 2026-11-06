@@ -52,5 +52,7 @@
     "choose_route_timeout_s": 900,
     "total_budget_s": 3600,
     "note": "per-message, choose_route and whole-grading wall-clock limits; exceeding any is an execution failure"
-  }
+  },
+  "task_md_version": "v3.1",
+  "task_md_version_note": "Prompt text version. 'v3.1' = original task.md (used by all v3.1 runs; keep for repeats). 'v3.2' adds: x0 sampled from the prior, noise std always SI, covariance in the pose's local tangent frame (not world), and a short grading summary. The harness renders task.md from spec.json with this version at prompt time, so cached scenarios/ need no regeneration."
 }

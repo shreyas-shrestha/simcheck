@@ -95,13 +95,47 @@ def test_unpriced_model_refused_before_any_call(tmp_path, monkeypatch):
     assert called == []  # previously the paid call happened first and pricing failed afterwards
 
 
-def test_prompt_states_conventions_agents_are_graded_on():
-    # Fails if scenarios/ on disk predates the task.md conventions: delete scenarios/ to regenerate.
+V31_ADDITIONS = ("not in the world frame", "sampled from the stated prior", "always in SI units", "Grading:")
+
+
+def test_v31_prompt_is_byte_identical_to_original_run():
+    # runs/astra/standard/1/prompt.md is the saved prompt of the original v3.1 Astra run. Repeats must send the
+    # exact same bytes, so the default (v3.1) prompt is pinned to it.
+    from simcheck import generator
+    assert generator.task_md_version() == "v3.1"
+    saved = (harness.ROOT / "runs" / "astra" / "standard" / "1" / "prompt.md").read_text()
+    assert harness.build_prompt("standard") == saved
+    assert not any(a in saved for a in V31_ADDITIONS)
+
+
+def test_v31_task_md_matches_original_generator_for_every_task():
+    import subprocess
+    import types
+    from simcheck import generator, verifier as V
+    src = subprocess.run(["git", "show", "23c299d:simcheck/generator.py"], cwd=harness.ROOT,
+                         capture_output=True, text=True)
+    if src.returncode != 0:
+        pytest.skip("original commit 23c299d not available in this checkout")
+    old = types.ModuleType("generator_v31")
+    old.__dict__["__file__"] = generator.__file__
+    exec(compile(src.stdout, "generator_v31", "exec"), old.__dict__)
+    for task in V.TASKS:
+        spec = V.task_spec(task)
+        assert generator.task_md(spec, "v3.1") == old.task_md(spec), task
+
+
+def test_v32_prompt_states_the_conventions(monkeypatch):
+    from simcheck import generator
+    monkeypatch.setattr(generator, "task_md_version", lambda: "v3.2")
     p = harness.build_prompt("standard")
-    assert "not in the world frame" in p                    # covariance frame (calibration depends on it)
-    assert "sampled from the stated prior" in p             # x_0 is not known exactly
-    assert "always in SI units" in p                        # noise std units under unit traps
-    assert "Grading:" in p and "7.81" not in p and "0.25" not in p.split("## spec.json")[0]   # no thresholds
+    assert all(a in p for a in V31_ADDITIONS)
+    assert "7.81" not in p and "0.25" not in p.split("## spec.json")[0]   # no threshold values
+
+
+def test_unknown_task_md_version_is_rejected():
+    from simcheck import generator, verifier as V
+    with pytest.raises(ValueError, match="task_md_version"):
+        generator.task_md(V.task_spec("standard"), "v9")
 
 
 def test_syntax_error_is_explained():

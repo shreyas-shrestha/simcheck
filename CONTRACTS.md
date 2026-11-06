@@ -146,6 +146,9 @@ runs/_reference/                     cached reference datasets and route trials
   previous solution.py and the feedback bullets (single turn, no chat history). Code extraction takes the last
   parseable block defining both `make_estimator` and `choose_route`, falling back to the last one defining
   `make_estimator`.
-- **Scenario cache:** `scenarios/` is regenerated from seeds but cached on disk. After a `generator.task_md` change,
-  delete `scenarios/` so prompts use the new task.md. `test_prompt_states_conventions_agents_are_graded_on`
-  fails if the cached task.md is stale.
+- **task.md version:** `config.json` `"task_md_version"` is `"v3.1"` (default; the original text, and
+  `test_v31_prompt_is_byte_identical_to_original_run` pins it to the saved v3.1 prompt) or `"v3.2"` (adds the x₀
+  prior, SI noise units, covariance frame and a grading summary). `build_prompt` renders task.md from `spec.json`
+  with that version at prompt time, so the cached `scenarios/` folders need no regeneration. The
+  `public/task.md` file in the scenario folder (also mounted into the container) is whatever version was
+  current when it was generated.

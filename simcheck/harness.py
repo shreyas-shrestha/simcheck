@@ -22,7 +22,7 @@ from pathlib import Path
 
 import certifi
 
-from simcheck import verifier as V
+from simcheck import generator, verifier as V
 from simcheck.sandbox import make_runner
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -222,7 +222,10 @@ def public_dir(task):
 
 def build_prompt(task, prev_code=None, feedback=None, attempt=1):
     pub = public_dir(task)
-    parts = [(pub / "task.md").read_text(), "## spec.json\n```json\n" + (pub / "spec.json").read_text() + "\n```",
+    # Render task.md from spec.json with config.json "task_md_version" (default "v3.1") instead of reading the
+    # cached scenarios/<id>/public/task.md, so the version setting always takes effect.
+    task_text = generator.task_md(json.loads((pub / "spec.json").read_text()))
+    parts = [task_text, "## spec.json\n```json\n" + (pub / "spec.json").read_text() + "\n```",
              "## measurements.json (one example episode; your estimator is graded on many others)\n```json\n"
              + (pub / "measurements.json").read_text() + "\n```", "## Contract\n" + CONTRACT]
     if prev_code is not None:
