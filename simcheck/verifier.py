@@ -381,7 +381,22 @@ def verify(runner, task="standard", seed_set="eval", decision_only=False, progre
     rep["feedback"] = feedback(rep)
     rep["seconds"] = time.perf_counter() - t0
     _write(rep, out_path)
+    _write_artifacts(out_path, scen, est, locals().get("succ"), locals().get("coll"))
     return rep
+
+
+def _write_artifacts(out_path, scen, est, succ, coll):
+    """For the demo: per-step estimates and covariances, truth, and per-trial route outcomes (host side only)."""
+    if not out_path:
+        return
+    a = {}
+    for i, ((sid, _, _, tr), (e, c)) in enumerate(zip(scen, est)):
+        a[f"est{i}"], a[f"cov{i}"], a[f"truth{i}"] = e, c, tr
+    for r, v in (succ or {}).items():
+        a[f"route_{r}_success"] = np.array(v, bool)
+        a[f"route_{r}_collision"] = np.array(coll[r], bool)
+    a["scenario_ids"] = np.array([s[0] for s in scen])
+    np.savez_compressed(Path(out_path).parent / "artifacts.npz", **a)
 
 
 def _write(rep, out_path):

@@ -12,6 +12,7 @@ import ast
 import json
 import os
 import re
+import subprocess
 import ssl
 import threading
 import time
@@ -300,11 +301,22 @@ def _say(msg):
     print(msg, flush=True)  # logs are redirected to files; flush so progress is visible live
 
 
-def run_job(model_key, task, cost, decision_only=False, prefer_docker=True, echo=_say):
+def git_commit():
+    try:
+        h = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True).stdout.strip()
+        dirty = subprocess.run(["git", "status", "--porcelain", "--", "simcheck", "config.json", "models.json"],
+                               cwd=ROOT, capture_output=True, text=True).stdout.strip()
+        return h + ("-dirty" if dirty else "")
+    except OSError:
+        return "?"
+
+
+def run_job(model_key, task, cost, decision_only=False, prefer_docker=True, echo=_say, base=None,
+            max_attempts=N_ATTEMPTS, fresh=True):
     cfg = MODELS[model_key]
-    base = ROOT / "runs" / model_key / task
+    base = base or ROOT / "runs" / model_key / task
     rounds, code, rep = [], None, None
-    for attempt in range(1, N_ATTEMPTS + 1):
+    for attempt in range(1, max_attempts + 1):
         d = base / str(attempt)
         prev_code, prev_feedback = code, (rep or {}).get("feedback")
         if (d / "report.json").exists():
@@ -333,6 +345,9 @@ def run_job(model_key, task, cost, decision_only=False, prefer_docker=True, echo
                                              "settings": cfg["settings"], "system": SYSTEM})
                 _write(d / "call.json", {"usage": resp["usage"], "usd": usd, "seconds": time.perf_counter() - t0,
                                          "meta": resp["raw_meta"]})
+                _write(d / "run_meta.json", {"git_commit": git_commit(), "task_md_version": generator.task_md_version(),
+                                             "model_id_reported": resp["model_id"], "requested_model": cfg["model"],
+                                             "settings": cfg["settings"], "time": time.time()})
             try:
                 code = extract_code(text)
                 _write(d / "solution.py", code)
@@ -345,7 +360,7 @@ def run_job(model_key, task, cost, decision_only=False, prefer_docker=True, echo
         rounds.append({"attempt": attempt, "reward": rep["reward"], "accepted": rep["accepted"],
                        "layers": {k: v.get("pass") for k, v in rep["layers"].items() if k != "structural"},
                        "feedback_numbers_in_code": feedback_echo(code, prev_code, prev_feedback) if attempt > 1 else []})
-        echo(f"{model_key}/{task} attempt {attempt}: reward {rep['reward']:.2f} accepted={rep['accepted']}")
+        echo(f"{model_key}/{base.parent.name}/{task} attempt {attempt}: reward {rep['reward']:.2f} accepted={rep['accepted']}")
         if rep["accepted"]:
             break
 
@@ -354,16 +369,18 @@ def run_job(model_key, task, cost, decision_only=False, prefer_docker=True, echo
     fd = base / "final_fresh"
     if (fd / "report.json").exists():
         fresh = json.loads((fd / "report.json").read_text())
-    elif sol.exists():
+    elif sol.exists() and fresh:
         fresh = _verify(sol, task, "fresh", fd, decision_only, prefer_docker)
+    elif sol.exists():
+        fresh = {"accepted": None, "reward": None, "layers": {}, "feedback": ["fresh re-grade skipped"]}
     else:
         fresh = {"accepted": False, "reward": 0.0, "layers": {}, "feedback": ["no runnable final solution"]}
     final.update(reward=fresh["reward"], accepted=fresh["accepted"])
-    echo(f"{model_key}/{task} final on fresh seeds: reward {fresh['reward']:.2f} accepted={fresh['accepted']}")
+    echo(f"{model_key}/{task} final on fresh seeds: reward {fresh['reward']} accepted={fresh['accepted']}")
     summary = {"model": model_key, "requested_model": cfg["model"], "task": task, "rounds": rounds,
                "accepted_first_attempt": rounds[0]["accepted"],
                "feedback_numbers_in_final_code": sorted({n for r in rounds for n in r["feedback_numbers_in_code"]}),
-               "final_fresh": final, "decision_only": decision_only}
+               "final_fresh": final, "decision_only": decision_only, "max_attempts": max_attempts}
     _write(base / "summary.json", summary)
     return summary
 
@@ -376,13 +393,21 @@ def main(argv=None):
     ap.add_argument("--cost-cap", type=float, default=25.0, help="USD across all runs (ledger in runs/cost_ledger.jsonl)")
     ap.add_argument("--decision-only", action="store_true", help="fallback: reference estimator in the route loop")
     ap.add_argument("--no-docker", action="store_true")
+    ap.add_argument("--reps", type=int, default=0, help="N independent repeats -> runs/<out>/<model>/r<i>/<task>/")
+    ap.add_argument("--out", default="repeats", help="folder under runs/ for --reps")
+    ap.add_argument("--first-attempt-only", action="store_true", help="one attempt, no closed loop")
+    ap.add_argument("--no-fresh", action="store_true", help="skip the fresh-seed re-grade")
     a = ap.parse_args(argv)
     cost = CostTracker(a.cost_cap, ROOT / "runs" / "cost_ledger.jsonl")
     for t in a.tasks:  # materialise scenarios and reference caches once, before threads start
         public_dir(t)
     failed = 0
     with ThreadPoolExecutor(max_workers=a.concurrency) as ex:
-        futs = {ex.submit(run_job, a.model, t, cost, a.decision_only, not a.no_docker): t for t in a.tasks}
+        reps = range(1, a.reps + 1) if a.reps else [None]
+        futs = {ex.submit(run_job, a.model, t, cost, a.decision_only, not a.no_docker, _say,
+                          ROOT / "runs" / a.out / a.model / f"r{i}" / t if i else None,
+                          1 if a.first_attempt_only else N_ATTEMPTS, not a.no_fresh): f"r{i}/{t}" if i else t
+                for i in reps for t in a.tasks}
         for f in as_completed(futs):
             try:
                 f.result()
