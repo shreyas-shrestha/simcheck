@@ -87,7 +87,79 @@ class Estimator:
         return [self.last.x(), self.last.y(), self.last.theta()], P
 
 
+class ScaledNoiseEstimator(Estimator):
+    """unknown_noise: odometry std = nominal x unknown scale k. Batch LM each step; k^2 from the odometry
+    chi-square per degree of freedom (variance-component estimate), shrunk toward the middle of the stated
+    range and clipped to it. Covariances follow because the odometry factors are re-weighted by k."""
+
+    PRIOR_DOF = 6.0  # pseudo-observations at the geometric middle of the range
+
+    def __init__(self, spec):
+        super().__init__(spec)
+        self.sig = np.asarray(spec["sensor_noise_std"]["odom"], float)
+        self.lo, self.hi = spec["odom_noise_scale_range"]
+        self.k = math.sqrt(self.lo * self.hi)
+        self.odoms, self.unary, self.n_unary_dims = [], [], 0
+        self.values = gtsam.Values()
+
+    def _graph(self, k):
+        g = gtsam.NonlinearFactorGraph()
+        g.add(gtsam.PriorFactorPose2(X(0), self.prior_mean, self.prior_noise))
+        noise = gtsam.noiseModel.Diagonal.Sigmas(self.sig * k)
+        for i, z in self.odoms:
+            g.add(gtsam.BetweenFactorPose2(X(i - 1), X(i), z, noise))
+        for f in self.unary:
+            g.add(f)
+        return g
+
+    def _solve(self, k):
+        g = self._graph(k)
+        params = gtsam.LevenbergMarquardtParams()
+        params.setMaxIterations(20)
+        return g, gtsam.LevenbergMarquardtOptimizer(g, self.values, params).optimize()
+
+    def step(self, m):
+        k_step = m["step"]
+        if k_step == 0:
+            self.values.insert(X(0), self.prior_mean)
+        else:
+            odom = self._odom_body(m["odom"])
+            self.odoms.append((k_step, odom))
+            self.values.insert(X(k_step), self.values.atPose2(X(k_step - 1)).compose(odom))
+        if m.get("gps"):
+            self.unary.append(_gps_factor((m["gps"]["x"], m["gps"]["y"]), self.s_gps, X(k_step)))
+            self.n_unary_dims += 2
+        for obs in m.get("landmarks") or []:
+            b = math.radians(obs["bearing"]) if self.bearing_deg else obs["bearing"]
+            self.unary.append(_landmark_factor(self.landmarks[str(obs["id"])], b, obs["range"], self.s_b, self.s_r,
+                                               X(k_step)))
+            self.n_unary_dims += 2
+        n_odom = 3 * len(self.odoms)
+        k0 = math.sqrt(self.lo * self.hi)
+        for _ in range(2 if k_step % 5 == 0 else 0):  # re-estimate the scale every 5th step (speed)
+            g, est = self._solve(self.k)
+            if not n_odom:
+                break
+            # Variance-component estimate: whitened odometry chi-square over its redundancy numbers
+            # (1 - leverage, from the hat-matrix diagonal of the whitened Jacobian). Rows follow factor
+            # order: prior (3), odometry (3 each), then GPS/landmark rows.
+            A, r = g.linearize(est).jacobian()
+            Q, _ = np.linalg.qr(A)
+            lev = np.sum(Q ** 2, axis=1)[3:3 + n_odom]
+            chi = float(np.sum(r[3:3 + n_odom] ** 2))
+            dof = float(np.sum(1.0 - lev))
+            k2 = (self.PRIOR_DOF * k0 ** 2 + self.k ** 2 * chi) / (self.PRIOR_DOF + dof)
+            self.k = float(np.clip(math.sqrt(k2), self.lo, self.hi))
+        g, est = self._solve(self.k)
+        self.values = est
+        P = gtsam.Marginals(g, est).marginalCovariance(X(k_step))
+        p = est.atPose2(X(k_step))
+        return [p.x(), p.y(), p.theta()], P
+
+
 def make_estimator(public_spec):
+    if public_spec.get("odom_noise_scale_range"):
+        return ScaledNoiseEstimator(public_spec)
     return Estimator(public_spec)
 
 
@@ -96,7 +168,10 @@ def choose_route(public_spec, n_trials=40, seed_base=10_000_000):
     from simcheck import sim
     rates, length = {}, {}
     for r, pts in public_spec["routes"].items():
-        ok = sum(sim.run_episode(public_spec, r, seed_base + i, estimator=Estimator(public_spec))["outcome"]["success"]
+        # unknown_noise: simulate with scales drawn from the stated range (private seeds, nothing hidden)
+        from simcheck.generator import true_spec
+        ok = sum(sim.run_episode(true_spec(public_spec, seed_base + i), r, seed_base + i,
+                                 estimator=make_estimator(public_spec))["outcome"]["success"]
                  for i in range(n_trials))
         rates[r] = ok / n_trials
         length[r] = float(np.sum(np.linalg.norm(np.diff(np.asarray(pts), axis=0), axis=1)))

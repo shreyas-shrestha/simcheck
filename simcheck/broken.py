@@ -60,4 +60,6 @@ VARIANTS = {
     "wrong_odom_frame": _variant(_WrongOdomFrame),
     "missing_prior": _variant(_MissingPrior),
     "always_A": _variant(reference.Estimator, route="A"),
+    # v3.2, unknown_noise only: ignores odom_noise_scale_range and uses the nominal std
+    "nominal_noise": _variant(reference.Estimator),
 }

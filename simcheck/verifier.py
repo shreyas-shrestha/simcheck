@@ -19,13 +19,16 @@ from simcheck import generator, reference, sim
 from simcheck.sandbox import AgentError, Budgeted, InProcessRunner, RemoteEstimator, RunnerError
 
 ROOT = Path(__file__).resolve().parent.parent
-CONFIG = json.loads((ROOT / "config.json").read_text())
+CONFIG = json.loads(generator.config_path().read_text())
 
 TASKS = {
     "standard": {},
     "trap_units": {"trap_units": True},
     "trap_frame": {"trap_frame": True},
     "prior_needed": {"prior_needed": True},
+    # v3.2
+    "close_routes": {"gap_half_width": 0.575},  # A vs B 5-15 pp apart with the reference (dev seeds)
+    "unknown_noise": {"unknown_noise": True},
 }
 SEED_SETS = ("dev", "eval", "fresh")
 ROUTE_SEED_OFFSET = 100_000  # route trial seeds are disjoint from dataset seeds within a set
@@ -162,7 +165,7 @@ def route_trials(runner_or_none, spec, seed_set, T, progress=None):
     for i in range(T):
         for r in spec["routes"]:
             est = reference.make_estimator(spec) if runner_or_none is None else RemoteEstimator(runner_or_none, spec)
-            o = sim.run_episode(spec, r, base + i, estimator=est)["outcome"]
+            o = sim.run_episode(generator.true_spec(spec, base + i), r, base + i, estimator=est)["outcome"]
             succ[r].append(bool(o["success"]))
             coll[r].append(bool(o["collision"]))
         if progress and (i + 1) % 25 == 0:
@@ -291,15 +294,19 @@ def feedback(rep):
                         f"{t['reference_mean_nll']:.2f} + margin = {t['nll_bound']:.2f}.")
     r = L["route"]
     if r["regret_outcome"] != "pass":
-        rr = {k: v["success_rate"] for k, v in r["routes"].items()}
-        msgs.append(f"Route: chose {r['chosen']}, success rates with your estimator in the loop {rr} over T={r['T']} "
-                    f"paired trials; regret {r['regret']:.3f}, 95% CI {[round(x, 3) for x in r['regret_ci95']]}, "
-                    f"tolerance {r['delta']} -> {r['regret_outcome']}.")
+        # v3.2: no measured rates in feedback (they could be pasted into the revision)
+        if r.get("error"):
+            msgs.append(f"Route: closed-loop trials failed: {r['error'][:300]}")
+        elif r["regret_outcome"] == "fail":
+            msgs.append(f"Route: chose {r['chosen']}, but another route had a clearly higher collision-free arrival "
+                        f"rate with your estimator in the loop (T={r['T']} paired trials).")
+        else:
+            msgs.append(f"Route: chose {r['chosen']}; the trials could not show it is within {r['delta']} of the best "
+                        f"route (inconclusive).")
     s = r["stated_check"]
     if not s["pass"]:
-        msgs.append(f"Route: stated success probability {s['stated']:.2f} differs from the measured rate "
-                    f"{s['estimated']:.3f} (95% CI {[round(x, 3) for x in s['estimated_wilson95']]}) by more than "
-                    f"{s['tolerance']}.")
+        too = "too high" if s["stated"] > s["estimated"] else "too low"
+        msgs.append(f"Route: stated success probability {s['stated']:.2f} is {too} by more than {s['tolerance']}.")
     if L.get("structural", {}).get("notes"):
         msgs += [f"Structure (diagnostic): {n}" for n in L["structural"]["notes"]]
     return msgs
