@@ -1,0 +1,5 @@
+{"units_out": {"position": "m", "angle": "rad"}, "dt": 0.5,
+ "initial_pose": {"mean": [0, 0, 0], "cov_diag_variances": [0.01, 0.01, 0.001]},
+ "landmarks": {"0": [2.0, 1.0]}, "routes": {"A": [[0, 0], [5, 0]], "B": [[0, 0], [2, 2], [5, 0]]},
+ "sensor_noise_std": {"odom": [0.05, 0.05, 0.01], "range": 0.1, "bearing": 0.02, "gps": 0.5},
+ "input_units": {"odom": "m", "bearing": "rad"}, "odom_frame": "body"}
