@@ -107,7 +107,19 @@ def price(model_cfg, usage):
 _SSL = ssl.create_default_context(cafile=certifi.where())  # python.org builds ship without CA certs
 
 
-def _post(url, body, headers, retries=5):
+def _retry_wait(e, body, attempt):
+    """Seconds to wait before retrying: the server's hint if it gives one, else exponential backoff."""
+    hint = e.headers.get("retry-after") if e.headers else None
+    m = re.search(r"try again in ([\d.]+)(ms|s)", body)
+    if m:
+        hint = float(m.group(1)) / (1000 if m.group(2) == "ms" else 1)
+    try:
+        return min(120.0, float(hint) + 2.0)
+    except (TypeError, ValueError):
+        return min(120.0, 2 ** attempt * 5.0)
+
+
+def _post(url, body, headers, retries=10):
     data = json.dumps(body).encode()
     for i in range(retries):
         req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json", **headers})
@@ -115,10 +127,11 @@ def _post(url, body, headers, retries=5):
             with urllib.request.urlopen(req, timeout=900, context=_SSL) as r:
                 return json.loads(r.read())
         except urllib.error.HTTPError as e:
-            if e.code in (429, 500, 502, 503, 504) and i < retries - 1:
-                time.sleep(min(60, 2 ** i * 5))
+            msg = e.read().decode(errors="replace")
+            if e.code in (429, 500, 502, 503, 504) and i < retries - 1 and "insufficient_quota" not in msg:
+                time.sleep(_retry_wait(e, msg, i))
                 continue
-            raise RuntimeError(f"HTTP {e.code}: {e.read()[:500]!r}")
+            raise RuntimeError(f"HTTP {e.code}: {msg[:500]}")
         except urllib.error.URLError:
             if i < retries - 1:
                 time.sleep(min(60, 2 ** i * 5))

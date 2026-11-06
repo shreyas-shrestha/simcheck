@@ -1,7 +1,9 @@
 #!/bin/sh
-# Prompts for the OpenAI API key without echoing it and writes it to the gitignored .env.
+# Prompts for an API key without echoing it and stores it in the gitignored .env.
+# Usage: sh scripts/set_key.sh [VAR_NAME]   (default OPENAI_API_KEY). Other keys in .env are kept.
+name="${1:-OPENAI_API_KEY}"
 cd "$(dirname "$0")/.." || exit 1
-printf 'Paste your OpenAI API key and press Enter (input is hidden): '
+printf 'Paste your %s and press Enter (input is hidden): ' "$name"
 stty -echo
 IFS= read -r key
 stty echo
@@ -11,5 +13,8 @@ if [ -z "$key" ]; then
   exit 1
 fi
 umask 077
-printf 'OPENAI_API_KEY=%s\n' "$key" > .env
-echo "Saved to .env (gitignored). You can close this tab."
+touch .env
+grep -v "^${name}=" .env > .env.tmp
+printf '%s=%s\n' "$name" "$key" >> .env.tmp
+mv .env.tmp .env
+echo "Saved $name to .env (gitignored). You can close this tab."
