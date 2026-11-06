@@ -1,8 +1,0 @@
-{
-  "provider": "openai",
-  "requested_model": "gpt-6-astra",
-  "settings": {
-    "max_completion_tokens": 32000
-  },
-  "system": "You are an expert in robot state estimation and GTSAM. You write complete, correct, runnable Python."
-}
