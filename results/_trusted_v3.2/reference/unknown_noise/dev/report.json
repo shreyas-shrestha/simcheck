@@ -1,0 +1,152 @@
+{
+  "task": "unknown_noise",
+  "seed_set": "dev",
+  "isolation": "in-process (trusted code only)",
+  "thresholds_frozen": true,
+  "layers": {
+    "execution": {
+      "pass": true,
+      "determinism_max_pose_diff": 0.0,
+      "determinism_max_rel_cov_diff": 0.0
+    },
+    "structural": {
+      "provided": false,
+      "summary": null,
+      "notes": []
+    },
+    "accuracy": {
+      "pass": true,
+      "ate_m": 0.06054590136927121,
+      "reference_ate_m": 0.06054590136927121,
+      "bound_m": 0.34081885205390683,
+      "dropout_ate_m": 0.04716253927790228,
+      "reference_dropout_ate_m": 0.04716253927790228,
+      "per_scenario_ate_m": [
+        0.047981441413682636,
+        0.07295645579937658,
+        0.08510887069553227,
+        0.04120096476618677,
+        0.045397754559757426,
+        0.041553612000014235,
+        0.084494495158138,
+        0.07297111669606617,
+        0.06720951063184522,
+        0.051460499869981746,
+        0.053346178227811285,
+        0.048552179790384835,
+        0.0631948761613864,
+        0.042324990777783754,
+        0.06424295144148373,
+        0.09379590114483792,
+        0.06438061039951093,
+        0.0511112533851942,
+        0.03431036494013052,
+        0.07925863744458275,
+        0.06778621341854905,
+        0.04627771559827204,
+        0.05172429626447346,
+        0.05453314553726592,
+        0.0879270014137294,
+        0.07889893564568813,
+        0.05786927847871314,
+        0.043072450431092375,
+        0.07541551461799537,
+        0.04801982436867
+      ]
+    },
+    "calibration": {
+      "K": 30,
+      "times": {
+        "end_of_dropout": {
+          "pass": true,
+          "covered": 30,
+          "coverage_p_value": 1.0,
+          "overconfidence_ok": true,
+          "mean_nees": 2.5752409066891806,
+          "nees_lower_bound": 1.973210139189354,
+          "underconfidence_ok": true,
+          "mean_nll": -7.287506126181056,
+          "reference_mean_nll": -7.287506126181056,
+          "nll_bound": -6.287506126181056,
+          "nll_ok": true,
+          "mean_position_cov_trace_m2": 0.0023646922669481383,
+          "per_trajectory_coverage_diagnostic": 0.9496186573750265
+        },
+        "end_of_trajectory": {
+          "pass": true,
+          "covered": 29,
+          "coverage_p_value": 0.7853612360570628,
+          "overconfidence_ok": true,
+          "mean_nees": 2.7762717222016624,
+          "nees_lower_bound": 1.973210139189354,
+          "underconfidence_ok": true,
+          "mean_nll": -5.104012335820621,
+          "reference_mean_nll": -5.104012335820621,
+          "nll_bound": -4.104012335820621,
+          "nll_ok": true,
+          "mean_position_cov_trace_m2": 0.00772132465589441,
+          "per_trajectory_coverage_diagnostic": 0.9496186573750265
+        }
+      },
+      "pass": true,
+      "wording": "no calibration inconsistency detected (K=30)"
+    },
+    "route": {
+      "pass": true,
+      "regret_outcome": "pass",
+      "T": 200,
+      "chosen": "B",
+      "stated_success_prob": 1.0,
+      "reasoning": "MC with reference estimator, 40 trials/route: {'A': 0.35, 'B': 1.0}",
+      "routes": {
+        "A": {
+          "success_rate": 0.465,
+          "wilson95": [
+            0.39718443070423204,
+            0.5341347897100506
+          ],
+          "collision_rate": 0.535
+        },
+        "B": {
+          "success_rate": 1.0,
+          "wilson95": [
+            0.9811539940816791,
+            1.0
+          ],
+          "collision_rate": 0.0
+        }
+      },
+      "diff_B_minus_A": 0.5349999999999999,
+      "diff_ci95": [
+        0.46499999999999997,
+        0.605
+      ],
+      "regret": 0.0,
+      "regret_ci95": [
+        0.0,
+        0.0
+      ],
+      "delta": 0.05,
+      "stated_check": {
+        "pass": true,
+        "stated": 1.0,
+        "estimated": 1.0,
+        "estimated_wilson95": [
+          0.9811539940816791,
+          1.0
+        ],
+        "abs_diff": 0.0,
+        "tolerance": 0.15
+      },
+      "mode": "submitted estimator in the loop",
+      "reference_estimator_rates": {
+        "A": 0.465,
+        "B": 1.0
+      }
+    }
+  },
+  "accepted": true,
+  "reward": 1.0,
+  "feedback": [],
+  "seconds": 526.8494737090004
+}

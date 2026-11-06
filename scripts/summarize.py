@@ -1,7 +1,7 @@
 """Collect model runs into one summary.
 
-    .venv/bin/python scripts/summarize.py [--v31 runs/repeats-v3.1] [--v32 ../simcheck-v32/runs/v3.2]
-                                          [--loops runs] [--out runs/summary]
+    .venv/bin/python scripts/summarize.py [--v31 results/repeats-v3.1] [--v32 results/v3.2]
+                                          [--loops results] [--out results/summary]
 
 Headline: first-attempt pass rate per model per task with Wilson 95% intervals, from repeat folders laid out
 as <root>/<model>/r<i>/<task>/1/report.json.
@@ -159,12 +159,16 @@ def with_vs_without(groups):
     for (model, task), reps in groups.items():
         by[(reps[0]["_version"], model)] += reps
     for (version, model), reps in sorted(by.items()):
+        # paired: only runs that finished the closed loop, so before and after cover the same evals
+        reps = [r for r in reps if (_json(Path(r["_dir"]) / "summary.json") or {}).get("max_attempts", 1) > 1]
+        if not reps:
+            continue
         first = sum(bool(r.get("accepted")) for r in reps)
         naive = sum(bool(r["layers"]["execution"]["pass"] and r["layers"].get("accuracy", {}).get("pass")) for r in reps)
         looped, finals, echo, fixed, broke = 0, 0, set(), 0, 0
         for r in reps:
             sm = _json(Path(r["_dir"]) / "summary.json") or {}
-            if sm.get("max_attempts", 1) > 1:  # finished the closed loop (and fresh re-grade)
+            if True:
                 looped += 1
                 last = sm.get("rounds", [{}])[-1]
                 fresh = (sm.get("final_fresh") or {}).get("accepted")
@@ -286,14 +290,26 @@ def to_md(s):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--v31", default=str(ROOT / "runs" / "repeats-v3.1"))
-    ap.add_argument("--v32", default=str(ROOT.parent / "simcheck-v32" / "runs" / "v3.2"))
-    ap.add_argument("--loops", nargs="*", default=[str(ROOT / "runs")])
-    ap.add_argument("--out", default=str(ROOT / "runs" / "summary"))
+    R = ROOT / "results"  # committed results; pass runs/ paths to summarize new runs
+    ap.add_argument("--v31", default=str(R / "repeats-v3.1"))
+    ap.add_argument("--v32", default=str(R / "v3.2"))
+    ap.add_argument("--loops", nargs="*", default=[str(R)])
+    ap.add_argument("--out", default=str(R / "summary"))
     a = ap.parse_args()
     g31, g32 = first_try(a.v31, "v3.1"), first_try(a.v32, "v3.2")
     rows = headline(g31) + headline(g32)
-    s = {"with_vs_without": with_vs_without(g31) + with_vs_without(g32),
+    wv = with_vs_without(g31) + with_vs_without(g32)
+    for model in sorted({r["model"] for r in wv}):  # combined row per model across spec versions
+        rs = [r for r in wv if r["model"] == model]
+        if len(rs) > 1:
+            t = {k: sum(r[k] for r in rs) for k in ("n", "first_try", "after_loop_n", "after_loop",
+                                                     "accuracy_only_grader_accepts", "wrongly_accepted_by_accuracy_only",
+                                                     "fixed_by_feedback", "first_try_pass_lost")}
+            wv.append(dict(t, version="all", model=model, first_try_wilson95=wilson(t["first_try"], t["n"]),
+                           after_loop_wilson95=wilson(t["after_loop"], t["after_loop_n"]),
+                           copied_feedback_numbers=sorted({x for r in rs for x in r["copied_feedback_numbers"]}),
+                           mcnemar_exact_p=mcnemar(t["fixed_by_feedback"], t["first_try_pass_lost"])))
+    s = {"with_vs_without": wv,
          "headline": rows,
          "closed_loop": [r for root in a.loops for r in loops(root)],
          "v3_2": v32_details(g32),

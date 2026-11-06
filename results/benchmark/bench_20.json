@@ -1,0 +1,21 @@
+{
+  "A": {
+    "success_rate": 0.6,
+    "collision_rate": 0.4,
+    "mean_sec_per_episode": 0.01683399810026458,
+    "max_sec_per_episode": 0.022737833998689894,
+    "mean_steps": 41.45,
+    "mean_ms_per_step": 0.4011436131737953
+  },
+  "B": {
+    "success_rate": 1.0,
+    "collision_rate": 0.0,
+    "mean_sec_per_episode": 0.04163804380004876,
+    "max_sec_per_episode": 0.0460471670012339,
+    "mean_steps": 59.65,
+    "mean_ms_per_step": 0.6980104850694708
+  },
+  "paired_both_succeed": 12,
+  "n_trials": 20,
+  "sec_per_paired_trial": 0.05847204190031334
+}

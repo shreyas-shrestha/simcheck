@@ -1,0 +1,14 @@
+{
+  "git_commit": "13482ad85d856cab36f78939d019c5f6d89166ad",
+  "task_md_version": "v3.2",
+  "config": "config_v3.2.json",
+  "model_id_reported": "gemini-4-argon",
+  "requested_model": "gemini-4-argon",
+  "settings": {
+    "maxOutputTokens": 32000,
+    "thinkingConfig": {
+      "thinkingLevel": "medium"
+    }
+  },
+  "time": 1793995219.568248
+}

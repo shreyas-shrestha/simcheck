@@ -1,0 +1,136 @@
+{
+  "units_out": {
+    "position": "m",
+    "angle": "rad"
+  },
+  "dt": 0.5,
+  "pose_indexing": "N poses x_0..x_{N-1}, N-1 odometry transitions",
+  "initial_pose": {
+    "mean": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "cov_diag_variances": [
+      0.01,
+      0.01,
+      0.001
+    ]
+  },
+  "initial_truth_rule": "true x_0 is sampled from N(mean, diag(cov_diag_variances))",
+  "landmarks": {
+    "0": [
+      1.2,
+      5.5
+    ],
+    "1": [
+      3.12,
+      5.5
+    ],
+    "2": [
+      5.04,
+      5.5
+    ],
+    "3": [
+      6.96,
+      5.5
+    ],
+    "4": [
+      8.88,
+      5.5
+    ],
+    "5": [
+      10.8,
+      5.5
+    ]
+  },
+  "landmark_visibility": {
+    "max_range": 5.0,
+    "rule": "observed every step when within max_range, no occlusion"
+  },
+  "sensor_noise_std": {
+    "odom": [
+      0.02,
+      0.02,
+      0.01
+    ],
+    "range": 0.1,
+    "bearing": 0.03,
+    "gps": 0.15
+  },
+  "actuator_noise_std": {
+    "v": 0.05,
+    "omega": 0.05
+  },
+  "gps_schedule": {
+    "rate_steps": 1,
+    "dropout_steps": [
+      20,
+      35
+    ]
+  },
+  "input_units": {
+    "odom": "m",
+    "bearing": "rad"
+  },
+  "odom_frame": "body",
+  "controller": {
+    "type": "pure_pursuit",
+    "lookahead": 0.8,
+    "v": 0.5,
+    "omega_max": 1.0
+  },
+  "max_steps": 120,
+  "arrival_tolerance": 0.3,
+  "routes": {
+    "A": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        12.0,
+        0.0
+      ]
+    ],
+    "B": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        2.4000000000000004,
+        3.0
+      ],
+      [
+        9.600000000000001,
+        3.0
+      ],
+      [
+        12.0,
+        0.0
+      ]
+    ]
+  },
+  "robot_radius": 0.2,
+  "walls": [
+    [
+      5.4,
+      0.45,
+      9.0,
+      0.45
+    ],
+    [
+      5.4,
+      -0.45,
+      9.0,
+      -0.45
+    ]
+  ],
+  "success_definition": "reach within arrival_tolerance of route end within max_steps with zero collisions",
+  "objective": "maximize collision-free arrival probability; distance breaks close ties",
+  "odom_noise_scale_range": [
+    0.5,
+    3.0
+  ]
+}

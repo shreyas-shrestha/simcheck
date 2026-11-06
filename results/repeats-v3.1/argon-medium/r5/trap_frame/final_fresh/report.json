@@ -1,0 +1,166 @@
+{
+  "task": "trap_frame",
+  "seed_set": "fresh",
+  "isolation": "NONE: subprocess fallback (Docker unavailable); not a security boundary",
+  "thresholds_frozen": true,
+  "layers": {
+    "execution": {
+      "pass": true,
+      "determinism_max_pose_diff": 0.0,
+      "determinism_max_rel_cov_diff": 0.0
+    },
+    "structural": {
+      "provided": true,
+      "summary": {
+        "n_factors": 286,
+        "factor_types": {
+          "PriorFactorPoint2": 6,
+          "PriorFactorPose2": 1,
+          "PoseTranslationPrior2D": 43,
+          "BetweenFactorPose2": 58,
+          "BearingRangeFactor2D": 178
+        },
+        "n_variables": 65,
+        "n_values": 65,
+        "connected_components": 1,
+        "unary_factors": 50,
+        "first_key": "l0"
+      },
+      "notes": []
+    },
+    "accuracy": {
+      "pass": true,
+      "ate_m": 0.05442358194550959,
+      "reference_ate_m": 0.05442357535887567,
+      "bound_m": 0.33163536303831354,
+      "dropout_ate_m": 0.0440168529672555,
+      "reference_dropout_ate_m": 0.04401535997613919,
+      "per_scenario_ate_m": [
+        0.05611708809346642,
+        0.05180469198853828,
+        0.07049481261440184,
+        0.060028781113275566,
+        0.057801138676626215,
+        0.060468224848095706,
+        0.05950431416411935,
+        0.04679948599024499,
+        0.038612261544912055,
+        0.056341422003749086,
+        0.06364260474877446,
+        0.04946382149607564,
+        0.06631197112145601,
+        0.050336425463256236,
+        0.04824746079404828,
+        0.04594638514715352,
+        0.06292618375468234,
+        0.0467898763657408,
+        0.0542672138999016,
+        0.04990426623726952,
+        0.05037485930881283,
+        0.05621703232325657,
+        0.0601241522134339,
+        0.06526276655009153,
+        0.06548956678548708,
+        0.048845637685872294,
+        0.05210732909117,
+        0.04411111223846847,
+        0.047598459533226826,
+        0.04676811256968044
+      ]
+    },
+    "calibration": {
+      "K": 30,
+      "times": {
+        "end_of_dropout": {
+          "pass": true,
+          "covered": 27,
+          "coverage_p_value": 0.18782118685303992,
+          "overconfidence_ok": true,
+          "mean_nees": 3.494773935941603,
+          "nees_lower_bound": 1.973210139189354,
+          "underconfidence_ok": true,
+          "mean_nll": -7.147316392027981,
+          "reference_mean_nll": -7.147453010834817,
+          "nll_bound": -6.147453010834817,
+          "nll_ok": true,
+          "mean_position_cov_trace_m2": 0.0017895881496628149,
+          "per_trajectory_coverage_diagnostic": 0.9421419530116389
+        },
+        "end_of_trajectory": {
+          "pass": true,
+          "covered": 27,
+          "coverage_p_value": 0.18782118685303992,
+          "overconfidence_ok": true,
+          "mean_nees": 3.416009628289205,
+          "nees_lower_bound": 1.973210139189354,
+          "underconfidence_ok": true,
+          "mean_nll": -5.329750206508877,
+          "reference_mean_nll": -5.328885861643477,
+          "nll_bound": -4.328885861643477,
+          "nll_ok": true,
+          "mean_position_cov_trace_m2": 0.00539458009035775,
+          "per_trajectory_coverage_diagnostic": 0.9421419530116389
+        }
+      },
+      "pass": true,
+      "wording": "no calibration inconsistency detected (K=30)"
+    },
+    "route": {
+      "pass": true,
+      "regret_outcome": "pass",
+      "T": 200,
+      "chosen": "B",
+      "stated_success_prob": 0.99,
+      "reasoning": "Route A passes through a narrow corridor (walls at y=+-0.45 for x in [5.4, 9.0], leaving only 0.25m clearance for the 0.2m radius robot) right during the GPS dropout (steps 20-35), while out of range (>5.0m) of all landmarks at y=5.5, leading to high collision risk. Route B detours to y=3.0, completely avoiding the corridor walls and staying well within the 5.0m visibility range of landmarks at y=5.5 throughout the GPS dropout, achieving near-certain collision-free arrival well within the 120-step limit.",
+      "routes": {
+        "A": {
+          "success_rate": 0.71,
+          "wilson95": [
+            0.6436239464268834,
+            0.7684607310874219
+          ],
+          "collision_rate": 0.29
+        },
+        "B": {
+          "success_rate": 1.0,
+          "wilson95": [
+            0.9811539940816791,
+            1.0
+          ],
+          "collision_rate": 0.0
+        }
+      },
+      "diff_B_minus_A": 0.29000000000000004,
+      "diff_ci95": [
+        0.22999999999999998,
+        0.355
+      ],
+      "regret": 0.0,
+      "regret_ci95": [
+        0.0,
+        0.0
+      ],
+      "delta": 0.05,
+      "stated_check": {
+        "pass": true,
+        "stated": 0.99,
+        "estimated": 1.0,
+        "estimated_wilson95": [
+          0.9811539940816791,
+          1.0
+        ],
+        "abs_diff": 0.010000000000000009,
+        "tolerance": 0.15
+      },
+      "mode": "submitted estimator in the loop",
+      "reference_estimator_rates": {
+        "A": 0.715,
+        "B": 1.0
+      }
+    }
+  },
+  "accepted": true,
+  "reward": 1.0,
+  "feedback": [],
+  "seconds": 47.724790917000064
+}

@@ -1,0 +1,171 @@
+{
+  "task": "unknown_noise",
+  "seed_set": "fresh",
+  "isolation": "NONE: subprocess fallback (Docker unavailable); not a security boundary",
+  "thresholds_frozen": true,
+  "layers": {
+    "execution": {
+      "pass": true,
+      "determinism_max_pose_diff": 0.0,
+      "determinism_max_rel_cov_diff": 0.0
+    },
+    "structural": {
+      "provided": true,
+      "summary": {
+        "n_factors": 286,
+        "factor_types": {
+          "PriorFactorPoint2": 6,
+          "PriorFactorPose2": 1,
+          "CustomFactor": 43,
+          "BearingRangeFactor2D": 178,
+          "BetweenFactorPose2": 58
+        },
+        "n_variables": 65,
+        "n_values": 65,
+        "connected_components": 1,
+        "unary_factors": 50,
+        "first_key": "l0"
+      },
+      "notes": []
+    },
+    "accuracy": {
+      "pass": true,
+      "ate_m": 0.07979090105240122,
+      "reference_ate_m": 0.06554091271684287,
+      "bound_m": 0.3483113690752643,
+      "dropout_ate_m": 0.06807990877299926,
+      "reference_dropout_ate_m": 0.05358708247118585,
+      "per_scenario_ate_m": [
+        0.09477671886215501,
+        0.041764516062385404,
+        0.09867208584748761,
+        0.08647928527840391,
+        0.11150333020152303,
+        0.09530020343545201,
+        0.10417318636631141,
+        0.06400050704468946,
+        0.08699855789485557,
+        0.051720486571400055,
+        0.1131458358573333,
+        0.07714482262752476,
+        0.10811784736742062,
+        0.10861334803798257,
+        0.052323054267189605,
+        0.047179149398782365,
+        0.1174093587608341,
+        0.05843958981127443,
+        0.04413925850409813,
+        0.08764559753294511,
+        0.04265326993890262,
+        0.059552385618313074,
+        0.07930701695592574,
+        0.06186609096625355,
+        0.1060784728204821,
+        0.10476517667409078,
+        0.06578298036350415,
+        0.08750391521174253,
+        0.047521078402314364,
+        0.08914990489045894
+      ]
+    },
+    "calibration": {
+      "K": 30,
+      "times": {
+        "end_of_dropout": {
+          "pass": false,
+          "covered": 13,
+          "coverage_p_value": 4.874773520113485e-15,
+          "overconfidence_ok": false,
+          "mean_nees": 13.624560287287268,
+          "nees_lower_bound": 1.973210139189354,
+          "underconfidence_ok": true,
+          "mean_nll": -2.611830963015578,
+          "reference_mean_nll": -6.781209225176115,
+          "nll_bound": -5.781209225176115,
+          "nll_ok": false,
+          "mean_position_cov_trace_m2": 0.0012870430049953115,
+          "per_trajectory_coverage_diagnostic": 0.5423471025902257
+        },
+        "end_of_trajectory": {
+          "pass": false,
+          "covered": 12,
+          "coverage_p_value": 1.8439182972637276e-16,
+          "overconfidence_ok": false,
+          "mean_nees": 14.939877957467843,
+          "nees_lower_bound": 1.973210139189354,
+          "underconfidence_ok": true,
+          "mean_nll": -0.3237724502223519,
+          "reference_mean_nll": -4.607891146693487,
+          "nll_bound": -3.607891146693487,
+          "nll_ok": false,
+          "mean_position_cov_trace_m2": 0.003862408368343499,
+          "per_trajectory_coverage_diagnostic": 0.5423471025902257
+        }
+      },
+      "pass": false,
+      "wording": "calibration inconsistency detected (K=30)"
+    },
+    "route": {
+      "pass": true,
+      "regret_outcome": "pass",
+      "T": 200,
+      "chosen": "B",
+      "stated_success_prob": 1.0,
+      "reasoning": "Route B is chosen (estimated arrival probability 1.00 vs Route A 0.44). Route A passes through a narrow wall corridor (x in [5.4, 9.0], half-width 0.45m vs robot_radius 0.2m, leaving only 0.25m clearance) precisely during the GPS dropout window (steps 20-35). Furthermore, along Route A (y=0), the landmarks at y=5.5 are 5.5m away, exceeding max_range (5.0m), leaving the robot blind (dead-reckoning with up to 3x scaled odometry noise and actuator noise) inside the corridor. Route B detours to y=3.0, avoiding the walls completely and staying ~2.5m from the landmarks at y=5.5, ensuring continuous bearing-range measurements throughout the GPS dropout and reaching the goal within 60 steps (< 120 max_steps).",
+      "routes": {
+        "A": {
+          "success_rate": 0.51,
+          "wilson95": [
+            0.441184632709161,
+            0.5784384471724727
+          ],
+          "collision_rate": 0.49
+        },
+        "B": {
+          "success_rate": 1.0,
+          "wilson95": [
+            0.9811539940816791,
+            1.0
+          ],
+          "collision_rate": 0.0
+        }
+      },
+      "diff_B_minus_A": 0.49,
+      "diff_ci95": [
+        0.42000000000000004,
+        0.56
+      ],
+      "regret": 0.0,
+      "regret_ci95": [
+        0.0,
+        0.0
+      ],
+      "delta": 0.05,
+      "stated_check": {
+        "pass": true,
+        "stated": 1.0,
+        "estimated": 1.0,
+        "estimated_wilson95": [
+          0.9811539940816791,
+          1.0
+        ],
+        "abs_diff": 0.0,
+        "tolerance": 0.15
+      },
+      "mode": "submitted estimator in the loop",
+      "reference_estimator_rates": {
+        "A": 0.55,
+        "B": 1.0
+      }
+    }
+  },
+  "accepted": false,
+  "reward": 0.6,
+  "feedback": [
+    "Calibration at end of dropout: overconfident. Only 13/30 runs had NEES <= 7.81 (binomial p = 4.9e-15 < 0.01). Covariance too small (mean NEES 13.62, expected about 3).",
+    "Calibration at end of dropout: mean Gaussian NLL -2.61 exceeds reference -6.78 + margin = -5.78.",
+    "Calibration at end of trajectory: overconfident. Only 12/30 runs had NEES <= 7.81 (binomial p = 1.8e-16 < 0.01). Covariance too small (mean NEES 14.94, expected about 3).",
+    "Calibration at end of trajectory: mean Gaussian NLL -0.32 exceeds reference -4.61 + margin = -3.61."
+  ],
+  "seconds": 377.9071352909996
+}

@@ -1,0 +1,11 @@
+{
+  "provider": "gemini",
+  "requested_model": "gemini-4-argon",
+  "settings": {
+    "maxOutputTokens": 32000,
+    "thinkingConfig": {
+      "thinkingLevel": "medium"
+    }
+  },
+  "system": "You are an expert in robot state estimation and GTSAM. You write complete, correct, runnable Python."
+}

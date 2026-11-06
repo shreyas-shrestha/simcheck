@@ -1,0 +1,18 @@
+{
+  "task": "unknown_noise",
+  "seed_set": "eval",
+  "isolation": "NONE: subprocess fallback (Docker unavailable); not a security boundary",
+  "thresholds_frozen": true,
+  "layers": {
+    "execution": {
+      "pass": false,
+      "error": "AgentError: AttributeError: module 'gtsam' has no attribute 'PriorFactor'\nTraceback (most recent call last):\n  File \"agent_worker.py\", line 67, in main\n    est = sol.make_estimator(req[\"spec\"])\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"solution.py\", line 170, in make_estimator\n    return Estimator(public_spec)\n           ^^^^^^^^^^^^^^^^^^^^^^\n  File \"solution.py\", line 57, in __init__\n    self.lm_PriorFactorPoint2 = getattr(gtsam, \"PriorFactorPoint2\", gtsam.PriorFactor)\n                                                                    ^^^^^^^^^^^^^^^^^\nAttributeError: module 'gtsam' has no attribute 'PriorFactor'\n"
+    }
+  },
+  "accepted": false,
+  "reward": 0.0,
+  "feedback": [
+    "Execution failed: AgentError: AttributeError: module 'gtsam' has no attribute 'PriorFactor'\nTraceback (most recent call last):\n  File \"agent_worker.py\", line 67, in main\n    est = sol.make_estimator(req[\"spec\"])\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"solution.py\", line 170, in make_estimator\n    return Estimator(public_spec)\n           ^^^^^^^^^^^^^^^^^^^^^^\n  File \"solution.py\", line 57, in __init__\n    self.lm_PriorFactorPoint2 = getattr(gtsam, \"PriorFactorPoint2\", gtsam.PriorFactor)\n                                                                    ^^^^^^^^^^^^^^^^^\nAttributeError: module 'gtsam' has no attribute 'PriorFactor'\n"
+  ],
+  "seconds": 0.5084060000008321
+}

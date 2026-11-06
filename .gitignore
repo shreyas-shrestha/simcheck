@@ -17,3 +17,6 @@ scenarios/
 runs/*
 !runs/milestone1/
 !runs/benchmark/
+
+# committed results snapshot (scenarios included so results are self-contained)
+!results/scenarios/

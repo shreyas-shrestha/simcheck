@@ -1,0 +1,399 @@
+```python
+import math
+import numpy as np
+import gtsam
+from gtsam import symbol_shorthand
+
+X = symbol_shorthand.X
+L = symbol_shorthand.L
+
+
+def _wrap_angle(angle):
+    return (angle + math.pi) % (2.0 * math.pi) - math.pi
+
+
+class Estimator:
+    def __init__(self, public_spec):
+        self.spec = public_spec
+        self.graph = gtsam.NonlinearFactorGraph()
+        self.initial_estimates = gtsam.Values()
+        self.current_estimates = gtsam.Values()
+
+        init_pose_spec = public_spec["initial_pose"]
+        self.init_mean = init_pose_spec["mean"]
+        init_vars = init_pose_spec["cov_diag_variances"]
+        self.prior_noise = gtsam.noiseModel.Diagonal.Variances(
+            np.array(init_vars, dtype=float)
+        )
+
+        noise_std = public_spec["sensor_noise_std"]
+        odom_std = noise_std["odom"]
+        self.odom_noise = gtsam.noiseModel.Diagonal.Sigmas(
+            np.array(odom_std, dtype=float)
+        )
+        self.gps_noise = gtsam.noiseModel.Isotropic.Sigma(
+            2, float(noise_std["gps"])
+        )
+        self.br_noise = gtsam.noiseModel.Diagonal.Sigmas(
+            np.array([float(noise_std["bearing"]), float(noise_std["range"])], dtype=float)
+        )
+
+        input_units = public_spec.get("input_units", {})
+        self.odom_scale = 0.01 if input_units.get("odom", "m") == "cm" else 1.0
+        self.bearing_scale = (
+            math.pi / 180.0 if input_units.get("bearing", "rad") == "deg" else 1.0
+        )
+
+        self.landmarks = {}
+        for lm_id, pos in public_spec.get("landmarks", {}).items():
+            self.landmarks[str(lm_id)] = (int(lm_id), np.array(pos, dtype=float))
+
+        lm_prior_noise = gtsam.noiseModel.Isotropic.Sigma(2, 1e-6)
+        for str_id, (idx, pos) in self.landmarks.items():
+            key = L(idx)
+            pt = gtsam.Point2(float(pos[0]), float(pos[1]))
+            self.graph.add(gtsam.PriorFactorPoint2(key, pt, lm_prior_noise))
+            self.initial_estimates.insert(key, pt)
+            self.current_estimates.insert(key, pt)
+
+        isam_params = gtsam.ISAM2Params()
+        isam_params.setRelinearizeThreshold(0.01)
+        isam_params.relinearizeSkip = 1
+        self.isam = gtsam.ISAM2(isam_params)
+        self.new_factors = gtsam.NonlinearFactorGraph()
+        self.new_values = gtsam.Values()
+
+        for str_id, (idx, pos) in self.landmarks.items():
+            key = L(idx)
+            pt = gtsam.Point2(float(pos[0]), float(pos[1]))
+            self.new_factors.add(gtsam.PriorFactorPoint2(key, pt, lm_prior_noise))
+            self.new_values.insert(key, pt)
+
+        self.last_pose = None
+        self.last_step = -1
+
+    def step(self, new_measurements):
+        k = int(new_measurements["step"])
+        pose_key = X(k)
+
+        if k == 0:
+            init_pose = gtsam.Pose2(
+                float(self.init_mean[0]),
+                float(self.init_mean[1]),
+                float(self.init_mean[2]),
+            )
+            if new_measurements.get("gps") is not None:
+                gx = float(new_measurements["gps"]["x"])
+                gy = float(new_measurements["gps"]["y"])
+                # Combine prior and GPS for a better initial guess
+                var_x, var_y = self.spec["initial_pose"]["cov_diag_variances"][:2]
+                gps_var = float(self.spec["sensor_noise_std"]["gps"]) ** 2
+                wx = (self.init_mean[0] / var_x + gx / gps_var) / (1.0 / var_x + 1.0 / gps_var)
+                wy = (self.init_mean[1] / var_y + gy / gps_var) / (1.0 / var_y + 1.0 / gps_var)
+                guess_pose = gtsam.Pose2(wx, wy, float(self.init_mean[2]))
+            else:
+                guess_pose = init_pose
+
+            prior_factor = gtsam.PriorFactorPose2(pose_key, init_pose, self.prior_noise)
+            self.graph.add(prior_factor)
+            self.new_factors.add(prior_factor)
+            self.initial_estimates.insert(pose_key, guess_pose)
+            self.new_values.insert(pose_key, guess_pose)
+            pred_pose = guess_pose
+        else:
+            odom = new_measurements["odom"]
+            dx = float(odom["dx"]) * self.odom_scale
+            dy = float(odom["dy"]) * self.odom_scale
+            dtheta = float(odom["dtheta"])
+            rel_pose = gtsam.Pose2(dx, dy, dtheta)
+
+            prev_key = X(k - 1)
+            between_factor = gtsam.BetweenFactorPose2(
+                prev_key, pose_key, rel_pose, self.odom_noise
+            )
+            self.graph.add(between_factor)
+            self.new_factors.add(between_factor)
+
+            pred_pose = self.last_pose.compose(rel_pose)
+            self.initial_estimates.insert(pose_key, pred_pose)
+            self.new_values.insert(pose_key, pred_pose)
+
+        gps = new_measurements.get("gps")
+        if gps is not None:
+            gx = float(gps["x"])
+            gy = float(gps["y"])
+            gps_factor = gtsam.PoseTranslationPrior2D(
+                pose_key, gtsam.Point2(gx, gy), self.gps_noise
+            )
+            self.graph.add(gps_factor)
+            self.new_factors.add(gps_factor)
+
+        landmarks = new_measurements.get("landmarks", [])
+        if landmarks:
+            for lm in landmarks:
+                lm_id_str = str(lm["id"])
+                if lm_id_str in self.landmarks:
+                    lm_idx, _ = self.landmarks[lm_id_str]
+                    bearing = _wrap_angle(float(lm["bearing"]) * self.bearing_scale)
+                    rng = float(lm["range"])
+                    br_factor = gtsam.BearingRangeFactor2D(
+                        pose_key,
+                        L(lm_idx),
+                        gtsam.Rot2(bearing),
+                        rng,
+                        self.br_noise,
+                    )
+                    self.graph.add(br_factor)
+                    self.new_factors.add(br_factor)
+
+        try:
+            self.isam.update(self.new_factors, self.new_values)
+            self.isam.update()
+            self.current_estimates = self.isam.calculateEstimate()
+            est_pose = self.current_estimates.atPose2(pose_key)
+            cov = self.isam.marginalCovariance(pose_key)
+        except Exception:
+            params = gtsam.LevenbergMarquardtParams()
+            optimizer = gtsam.LevenbergMarquardtOptimizer(
+                self.graph, self.initial_estimates, params
+            )
+            self.current_estimates = optimizer.optimize()
+            est_pose = self.current_estimates.atPose2(pose_key)
+            marginals = gtsam.Marginals(self.graph, self.current_estimates)
+            cov = marginals.marginalCovariance(pose_key)
+
+        self.new_factors.resize(0)
+        self.new_values.clear()
+        self.last_pose = est_pose
+        self.last_step = k
+
+        pose_arr = np.array([est_pose.x(), est_pose.y(), est_pose.theta()], dtype=float)
+        cov_arr = np.array(cov, dtype=float).reshape((3, 3))
+        return pose_arr, cov_arr
+
+
+def make_estimator(public_spec):
+    return Estimator(public_spec)
+
+
+def build_graph(measurements, public_spec):
+    est = make_estimator(public_spec)
+    for m in measurements:
+        est.step(m)
+    return est.graph, est.current_estimates
+
+
+def _point_to_segment_dist(px, py, x1, y1, x2, y2):
+    dx = x2 - x1
+    dy = y2 - y1
+    l2 = dx * dx + dy * dy
+    if l2 == 0.0:
+        return math.hypot(px - x1, py - y1)
+    t = max(0.0, min(1.0, ((px - x1) * dx + (py - y1) * dy) / l2))
+    proj_x = x1 + t * dx
+    proj_y = y1 + t * dy
+    return math.hypot(px - proj_x, py - proj_y)
+
+
+def _pure_pursuit_control(pose, waypoints, seg_idx, lookahead, v_cmd, omega_max):
+    px, py, theta = pose[0], pose[1], pose[2]
+    n_seg = len(waypoints) - 1
+
+    # Advance segment index if close to current segment end
+    while seg_idx < n_seg - 1:
+        wx, wy = waypoints[seg_idx + 1]
+        if math.hypot(px - wx, py - wy) < lookahead:
+            seg_idx += 1
+        else:
+            break
+
+    # Find lookahead point along route starting from seg_idx
+    target = waypoints[-1]
+    for i in range(seg_idx, n_seg):
+        p1 = waypoints[i]
+        p2 = waypoints[i + 1]
+        dx = p2[0] - p1[0]
+        dy = p2[1] - p1[1]
+        seg_len = math.hypot(dx, dy)
+        if seg_len < 1e-9:
+            continue
+        # Project robot onto segment
+        t_proj = ((px - p1[0]) * dx + (py - p1[1]) * dy) / (seg_len * seg_len)
+        t_proj = max(0.0, min(1.0, t_proj))
+        proj_x = p1[0] + t_proj * dx
+        proj_y = p1[1] + t_proj * dy
+        dist_to_seg = math.hypot(px - proj_x, py - proj_y)
+        if dist_to_seg <= lookahead:
+            rem = math.sqrt(max(0.0, lookahead * lookahead - dist_to_seg * dist_to_seg))
+            t_look = t_proj + rem / seg_len
+            if t_look <= 1.0:
+                target = [p1[0] + t_look * dx, p1[1] + t_look * dy]
+                seg_idx = i
+                break
+            else:
+                target = p2
+        else:
+            target = [proj_x + (dx / seg_len) * lookahead, proj_y + (dy / seg_len) * lookahead]
+            break
+
+    dx_t = target[0] - px
+    dy_t = target[1] - py
+    alpha = _wrap_angle(math.atan2(dy_t, dx_t) - theta)
+    L_d = max(0.1, math.hypot(dx_t, dy_t))
+    curvature = 2.0 * math.sin(alpha) / L_d
+    omega = max(-omega_max, min(omega_max, v_cmd * curvature))
+    return v_cmd, omega, seg_idx
+
+
+def _simulate_route(route_name, public_spec, n_trials=40, seed=42):
+    rng = np.random.default_rng(seed)
+    waypoints = [np.array(p, dtype=float) for p in public_spec["routes"][route_name]]
+    goal = waypoints[-1]
+    dt = float(public_spec["dt"])
+    max_steps = int(public_spec["max_steps"])
+    arrival_tol = float(public_spec["arrival_tolerance"])
+    robot_radius = float(public_spec["robot_radius"])
+    walls = public_spec.get("walls", [])
+
+    ctrl = public_spec["controller"]
+    lookahead = float(ctrl["lookahead"])
+    v_nom = float(ctrl["v"])
+    omega_max = float(ctrl["omega_max"])
+
+    act_std = public_spec["actuator_noise_std"]
+    v_std = float(act_std["v"])
+    omega_std = float(act_std["omega"])
+
+    sens_std = public_spec["sensor_noise_std"]
+    odom_std = np.array(sens_std["odom"], dtype=float)
+    range_std = float(sens_std["range"])
+    bearing_std = float(sens_std["bearing"])
+    gps_std = float(sens_std["gps"])
+
+    input_units = public_spec.get("input_units", {})
+    odom_unit_scale = 100.0 if input_units.get("odom", "m") == "cm" else 1.0
+    bearing_unit_scale = 180.0 / math.pi if input_units.get("bearing", "rad") == "deg" else 1.0
+
+    gps_sched = public_spec.get("gps_schedule", {})
+    rate_steps = int(gps_sched.get("rate_steps", 1))
+    dropout = gps_sched.get("dropout_steps", [-1, -1])
+
+    max_range = float(public_spec["landmark_visibility"]["max_range"])
+    landmarks = public_spec.get("landmarks", {})
+
+    init_mean = np.array(public_spec["initial_pose"]["mean"], dtype=float)
+    init_std = np.sqrt(np.array(public_spec["initial_pose"]["cov_diag_variances"], dtype=float))
+
+    successes = 0
+    for _ in range(n_trials):
+        est = make_estimator(public_spec)
+        true_pose = gtsam.Pose2(*(init_mean + rng.normal(0.0, init_std)))
+        seg_idx = 0
+        collided = False
+        arrived = False
+
+        for step_k in range(max_steps):
+            if step_k == 0:
+                odom_meas = None
+            else:
+                v_cmd, omega_cmd, seg_idx = _pure_pursuit_control(
+                    est_pose_arr, waypoints, seg_idx, lookahead, v_nom, omega_max
+                )
+                v_true = v_cmd + rng.normal(0.0, v_std)
+                omega_true = omega_cmd + rng.normal(0.0, omega_std)
+                rel_true = gtsam.Pose2(v_true * dt, 0.0, omega_true * dt)
+                next_pose = true_pose.compose(rel_true)
+
+                # Check collision along segment
+                for w in walls:
+                    d0 = _point_to_segment_dist(true_pose.x(), true_pose.y(), w[0], w[1], w[2], w[3])
+                    d1 = _point_to_segment_dist(next_pose.x(), next_pose.y(), w[0], w[1], w[2], w[3])
+                    dm = _point_to_segment_dist(
+                        0.5 * (true_pose.x() + next_pose.x()),
+                        0.5 * (true_pose.y() + next_pose.y()),
+                        w[0], w[1], w[2], w[3],
+                    )
+                    if min(d0, d1, dm) <= robot_radius:
+                        collided = True
+                        break
+                true_pose = next_pose
+                if collided:
+                    break
+
+                noise_xi = rng.normal(0.0, odom_std)
+                rel_meas = rel_true.compose(gtsam.Pose2.Expmap(noise_xi))
+                odom_meas = {
+                    "dx": float(rel_meas.x() * odom_unit_scale),
+                    "dy": float(rel_meas.y() * odom_unit_scale),
+                    "dtheta": float(rel_meas.theta()),
+                }
+
+            # Check GPS availability
+            in_dropout = len(dropout) == 2 and (dropout[0] <= step_k <= dropout[1])
+            if (step_k % rate_steps == 0) and not in_dropout:
+                gps_meas = {
+                    "x": float(true_pose.x() + rng.normal(0.0, gps_std)),
+                    "y": float(true_pose.y() + rng.normal(0.0, gps_std)),
+                }
+            else:
+                gps_meas = None
+
+            # Landmarks
+            lm_list = []
+            for lm_id, lm_pos in landmarks.items():
+                dx_l = lm_pos[0] - true_pose.x()
+                dy_l = lm_pos[1] - true_pose.y()
+                r_true = math.hypot(dx_l, dy_l)
+                if r_true <= max_range:
+                    b_true = _wrap_angle(math.atan2(dy_l, dx_l) - true_pose.theta())
+                    r_m = r_true + rng.normal(0.0, range_std)
+                    b_m = _wrap_angle(b_true + rng.normal(0.0, bearing_std)) * bearing_unit_scale
+                    lm_list.append({"id": str(lm_id), "range": float(r_m), "bearing": float(b_m)})
+
+            meas = {
+                "step": step_k,
+                "t": step_k * dt,
+                "odom": odom_meas,
+                "gps": gps_meas,
+                "landmarks": lm_list,
+            }
+            est_pose_arr, _ = est.step(meas)
+
+            if math.hypot(true_pose.x() - goal[0], true_pose.y() - goal[1]) <= arrival_tol:
+                arrived = True
+                break
+
+        if arrived and not collided:
+            successes += 1
+
+    return successes / float(n_trials)
+
+
+def choose_route(public_spec):
+    prob_a = _simulate_route("A", public_spec, n_trials=40, seed=101)
+    prob_b = _simulate_route("B", public_spec, n_trials=40, seed=101)
+
+    if prob_b >= prob_a:
+        chosen = "B"
+        prob = prob_b
+        reasoning = (
+            f"Route B achieves higher collision-free arrival probability ({prob_b:.2f} vs {prob_a:.2f}). "
+            "Route A passes through a narrow corridor (walls at y=+-0.45m, clearance 0.25m) right during "
+            "the GPS dropout window (steps 20-35) while out of range (>5.0m) of all landmarks at y=5.5m, "
+            "leading to unobservable lateral drift and wall collisions. Route B detours to y=3.0m, avoiding "
+            "the narrow walls and staying within 2.5m of the landmarks for continuous bearing-range localization."
+        )
+    else:
+        chosen = "A"
+        prob = prob_a
+        reasoning = (
+            f"Route A achieves higher collision-free arrival probability ({prob_a:.2f} vs {prob_b:.2f}) "
+            "and is shorter."
+        )
+
+    return {
+        "route": chosen,
+        "success_prob": float(prob),
+        "reasoning": reasoning,
+    }
+```

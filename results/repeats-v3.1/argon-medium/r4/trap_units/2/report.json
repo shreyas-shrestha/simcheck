@@ -1,0 +1,166 @@
+{
+  "task": "trap_units",
+  "seed_set": "eval",
+  "isolation": "NONE: subprocess fallback (Docker unavailable); not a security boundary",
+  "thresholds_frozen": true,
+  "layers": {
+    "execution": {
+      "pass": true,
+      "determinism_max_pose_diff": 0.0,
+      "determinism_max_rel_cov_diff": 0.0
+    },
+    "structural": {
+      "provided": true,
+      "summary": {
+        "n_factors": 285,
+        "factor_types": {
+          "PriorFactorPoint2": 6,
+          "PriorFactorPose2": 1,
+          "CustomFactor": 43,
+          "BetweenFactorPose2": 58,
+          "BearingRangeFactor2D": 177
+        },
+        "n_variables": 65,
+        "n_values": 65,
+        "connected_components": 1,
+        "unary_factors": 50,
+        "first_key": "l0"
+      },
+      "notes": []
+    },
+    "accuracy": {
+      "pass": true,
+      "ate_m": 0.05713135912278415,
+      "reference_ate_m": 0.05713043676175959,
+      "bound_m": 0.3356956551426394,
+      "dropout_ate_m": 0.04311861849093813,
+      "reference_dropout_ate_m": 0.043117007633987,
+      "per_scenario_ate_m": [
+        0.06021622291677199,
+        0.08478117650552278,
+        0.04556455014591317,
+        0.0589446215783772,
+        0.04640510851934821,
+        0.05146142988218925,
+        0.05240519242253782,
+        0.059995396908974236,
+        0.05818250202035094,
+        0.057671788529372936,
+        0.05060208878243502,
+        0.05331187409398697,
+        0.06761112354584826,
+        0.06481486173848894,
+        0.05756058365929858,
+        0.04835161736716439,
+        0.051059344342708736,
+        0.06727334554774696,
+        0.0560316542027244,
+        0.055952827516282624,
+        0.055562953900088,
+        0.0550465871591896,
+        0.05077060226778666,
+        0.058820636936164516,
+        0.048890383737730685,
+        0.05544380887360841,
+        0.06583345389667149,
+        0.051069336671737985,
+        0.06861452284123241,
+        0.05569117717327158
+      ]
+    },
+    "calibration": {
+      "K": 30,
+      "times": {
+        "end_of_dropout": {
+          "pass": true,
+          "covered": 29,
+          "coverage_p_value": 0.7853612360570628,
+          "overconfidence_ok": true,
+          "mean_nees": 2.74201693682468,
+          "nees_lower_bound": 1.973210139189354,
+          "underconfidence_ok": true,
+          "mean_nll": -7.522209953350559,
+          "reference_mean_nll": -7.522301894140914,
+          "nll_bound": -6.522301894140914,
+          "nll_ok": true,
+          "mean_position_cov_trace_m2": 0.0017920454371838125,
+          "per_trajectory_coverage_diagnostic": 0.9558606530762589
+        },
+        "end_of_trajectory": {
+          "pass": true,
+          "covered": 29,
+          "coverage_p_value": 0.7853612360570628,
+          "overconfidence_ok": true,
+          "mean_nees": 3.297805437836666,
+          "nees_lower_bound": 1.973210139189354,
+          "underconfidence_ok": true,
+          "mean_nll": -5.378991803216848,
+          "reference_mean_nll": -5.378532809031281,
+          "nll_bound": -4.378532809031281,
+          "nll_ok": true,
+          "mean_position_cov_trace_m2": 0.005405212562865579,
+          "per_trajectory_coverage_diagnostic": 0.9558606530762589
+        }
+      },
+      "pass": true,
+      "wording": "no calibration inconsistency detected (K=30)"
+    },
+    "route": {
+      "pass": true,
+      "regret_outcome": "pass",
+      "T": 200,
+      "chosen": "B",
+      "stated_success_prob": 1.0,
+      "reasoning": "Route B is chosen (estimated arrival probability ~1.00 vs Route A ~0.64). Route A passes through a narrow wall corridor (y in [-0.45, 0.45], clearance 0.25m for a 0.2m radius robot) from x=5.4 to 9.0. Along y=0, all landmarks at y=5.5 are out of the 5.0m visibility range, and GPS drops out during steps 20-35 right inside the corridor, causing pose drift and frequent wall collisions. Route B detours to y=3.0, avoiding the corridor walls entirely and bringing the y=5.5 landmarks well within the 5.0m range (~2.5m distance) for accurate bearing-range localization throughout the GPS dropout.",
+      "routes": {
+        "A": {
+          "success_rate": 0.765,
+          "wilson95": [
+            0.7015850701327535,
+            0.8184265467305365
+          ],
+          "collision_rate": 0.235
+        },
+        "B": {
+          "success_rate": 1.0,
+          "wilson95": [
+            0.9811539940816791,
+            1.0
+          ],
+          "collision_rate": 0.0
+        }
+      },
+      "diff_B_minus_A": 0.235,
+      "diff_ci95": [
+        0.18000000000000005,
+        0.29500000000000004
+      ],
+      "regret": 0.0,
+      "regret_ci95": [
+        0.0,
+        0.0
+      ],
+      "delta": 0.05,
+      "stated_check": {
+        "pass": true,
+        "stated": 1.0,
+        "estimated": 1.0,
+        "estimated_wilson95": [
+          0.9811539940816791,
+          1.0
+        ],
+        "abs_diff": 0.0,
+        "tolerance": 0.15
+      },
+      "mode": "submitted estimator in the loop",
+      "reference_estimator_rates": {
+        "A": 0.765,
+        "B": 1.0
+      }
+    }
+  },
+  "accepted": true,
+  "reward": 1.0,
+  "feedback": [],
+  "seconds": 87.16123150000203
+}

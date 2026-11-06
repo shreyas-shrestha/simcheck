@@ -1,0 +1,11 @@
+[standard/eval] layer 0+: running 30 datasets
+[standard/eval] layers 2-3
+[standard/eval] layer 4: 200 paired trials per route
+route trials 25/200
+route trials 50/200
+route trials 75/200
+route trials 100/200
+route trials 125/200
+route trials 150/200
+route trials 175/200
+route trials 200/200

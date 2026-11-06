@@ -1,0 +1,18 @@
+{
+  "task": "standard",
+  "seed_set": "eval",
+  "isolation": "NONE: subprocess fallback (Docker unavailable); not a security boundary",
+  "thresholds_frozen": true,
+  "layers": {
+    "execution": {
+      "pass": false,
+      "error": "AgentError: AttributeError: module 'gtsam' has no attribute 'GPSPose2Factor'\nTraceback (most recent call last):\n  File \"agent_worker.py\", line 70, in main\n    pose, cov = est.step(req[\"m\"])\n                ^^^^^^^^^^^^^^^^^^\n  File \"solution.py\", line 109, in step\n    self._add_measurement_to_graph(new_measurements)\n  File \"solution.py\", line 90, in _add_measurement_to_graph\n    self.graph.add(gtsam.GPSPose2Factor(pose_key, gps_pt, self.gps_noise))\n                   ^^^^^^^^^^^^^^^^^^^^\nAttributeError: module 'gtsam' has no attribute 'GPSPose2Factor'\n"
+    }
+  },
+  "accepted": false,
+  "reward": 0.0,
+  "feedback": [
+    "Execution failed: AgentError: AttributeError: module 'gtsam' has no attribute 'GPSPose2Factor'\nTraceback (most recent call last):\n  File \"agent_worker.py\", line 70, in main\n    pose, cov = est.step(req[\"m\"])\n                ^^^^^^^^^^^^^^^^^^\n  File \"solution.py\", line 109, in step\n    self._add_measurement_to_graph(new_measurements)\n  File \"solution.py\", line 90, in _add_measurement_to_graph\n    self.graph.add(gtsam.GPSPose2Factor(pose_key, gps_pt, self.gps_noise))\n                   ^^^^^^^^^^^^^^^^^^^^\nAttributeError: module 'gtsam' has no attribute 'GPSPose2Factor'\n"
+  ],
+  "seconds": 0.2415284580019943
+}

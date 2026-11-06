@@ -1,0 +1,350 @@
+{
+  "with_vs_without": [
+    {
+      "version": "v3.1",
+      "model": "argon-medium",
+      "n": 20,
+      "first_try": 10,
+      "first_try_wilson95": [
+        0.2992949144298199,
+        0.7007050855701801
+      ],
+      "after_loop_n": 20,
+      "after_loop": 17,
+      "after_loop_wilson95": [
+        0.6395767041130426,
+        0.9476322080405041
+      ],
+      "accuracy_only_grader_accepts": 13,
+      "wrongly_accepted_by_accuracy_only": 3,
+      "copied_feedback_numbers": [],
+      "fixed_by_feedback": 7,
+      "first_try_pass_lost": 0,
+      "mcnemar_exact_p": 0.015625
+    },
+    {
+      "version": "v3.2",
+      "model": "argon-medium",
+      "n": 5,
+      "first_try": 3,
+      "first_try_wilson95": [
+        0.23071993220883708,
+        0.8823817688407467
+      ],
+      "after_loop_n": 5,
+      "after_loop": 4,
+      "after_loop_wilson95": [
+        0.3755282641185388,
+        0.9637768390302125
+      ],
+      "accuracy_only_grader_accepts": 4,
+      "wrongly_accepted_by_accuracy_only": 1,
+      "copied_feedback_numbers": [],
+      "fixed_by_feedback": 1,
+      "first_try_pass_lost": 0,
+      "mcnemar_exact_p": 1.0
+    },
+    {
+      "n": 25,
+      "first_try": 13,
+      "after_loop_n": 25,
+      "after_loop": 21,
+      "accuracy_only_grader_accepts": 17,
+      "wrongly_accepted_by_accuracy_only": 4,
+      "fixed_by_feedback": 8,
+      "first_try_pass_lost": 0,
+      "version": "all",
+      "model": "argon-medium",
+      "first_try_wilson95": [
+        0.334982179531473,
+        0.6996899607103998
+      ],
+      "after_loop_wilson95": [
+        0.6534598601976183,
+        0.9359665239142201
+      ],
+      "copied_feedback_numbers": [],
+      "mcnemar_exact_p": 0.0078125
+    }
+  ],
+  "headline": [
+    {
+      "version": "v3.1",
+      "model": "argon-medium",
+      "task": "prior_needed",
+      "n": 5,
+      "passed": 2,
+      "rate": 0.4,
+      "wilson95": [
+        0.1176182311592533,
+        0.769280067791163
+      ],
+      "mean_reward": 0.82,
+      "failed_layers": {
+        "route": 3
+      },
+      "model_ids": [
+        "gemini-4-argon"
+      ],
+      "commits": [
+        "0aec375b41648aae53c4b1d17f084e4c299c6d42"
+      ],
+      "task_md_versions": [
+        "v3.1"
+      ]
+    },
+    {
+      "version": "v3.1",
+      "model": "argon-medium",
+      "task": "standard",
+      "n": 5,
+      "passed": 3,
+      "rate": 0.6,
+      "wilson95": [
+        0.23071993220883708,
+        0.8823817688407467
+      ],
+      "mean_reward": 0.6,
+      "failed_layers": {
+        "execution": 2
+      },
+      "model_ids": [
+        "gemini-4-argon"
+      ],
+      "commits": [
+        "0aec375b41648aae53c4b1d17f084e4c299c6d42"
+      ],
+      "task_md_versions": [
+        "v3.1"
+      ]
+    },
+    {
+      "version": "v3.1",
+      "model": "argon-medium",
+      "task": "trap_frame",
+      "n": 5,
+      "passed": 2,
+      "rate": 0.4,
+      "wilson95": [
+        0.1176182311592533,
+        0.769280067791163
+      ],
+      "mean_reward": 0.4,
+      "failed_layers": {
+        "execution": 3
+      },
+      "model_ids": [
+        "gemini-4-argon"
+      ],
+      "commits": [
+        "0aec375b41648aae53c4b1d17f084e4c299c6d42"
+      ],
+      "task_md_versions": [
+        "v3.1"
+      ]
+    },
+    {
+      "version": "v3.1",
+      "model": "argon-medium",
+      "task": "trap_units",
+      "n": 5,
+      "passed": 3,
+      "rate": 0.6,
+      "wilson95": [
+        0.23071993220883708,
+        0.8823817688407467
+      ],
+      "mean_reward": 0.6,
+      "failed_layers": {
+        "execution": 2
+      },
+      "model_ids": [
+        "gemini-4-argon"
+      ],
+      "commits": [
+        "0aec375b41648aae53c4b1d17f084e4c299c6d42"
+      ],
+      "task_md_versions": [
+        "v3.1"
+      ]
+    },
+    {
+      "version": "v3.2",
+      "model": "argon-medium",
+      "task": "close_routes",
+      "n": 3,
+      "passed": 3,
+      "rate": 1.0,
+      "wilson95": [
+        0.43849391955098227,
+        1.0
+      ],
+      "mean_reward": 1.0,
+      "failed_layers": {},
+      "model_ids": [
+        "gemini-4-argon"
+      ],
+      "commits": [
+        "5237e31cbcaf8853dd6470b43ed832ae7869bba5"
+      ],
+      "task_md_versions": [
+        "v3.2"
+      ]
+    },
+    {
+      "version": "v3.2",
+      "model": "argon-medium",
+      "task": "unknown_noise",
+      "n": 2,
+      "passed": 0,
+      "rate": 0.0,
+      "wilson95": [
+        0.0,
+        0.6576280471103807
+      ],
+      "mean_reward": 0.3,
+      "failed_layers": {
+        "execution": 1,
+        "calibration": 1
+      },
+      "model_ids": [
+        "gemini-4-argon"
+      ],
+      "commits": [
+        "5237e31cbcaf8853dd6470b43ed832ae7869bba5"
+      ],
+      "task_md_versions": [
+        "v3.2"
+      ]
+    }
+  ],
+  "closed_loop": [
+    {
+      "model": "argon-medium",
+      "task": "prior_needed",
+      "attempts_used": 1,
+      "rewards": [
+        1.0
+      ],
+      "fresh_reward": 1.0,
+      "fresh_accepted": true,
+      "copied_feedback_numbers": []
+    },
+    {
+      "model": "argon-medium",
+      "task": "standard",
+      "attempts_used": 2,
+      "rewards": [
+        0.0,
+        1.0
+      ],
+      "fresh_reward": 1.0,
+      "fresh_accepted": true,
+      "copied_feedback_numbers": []
+    },
+    {
+      "model": "argon-medium",
+      "task": "trap_frame",
+      "attempts_used": 2,
+      "rewards": [
+        0.0,
+        1.0
+      ],
+      "fresh_reward": 1.0,
+      "fresh_accepted": true,
+      "copied_feedback_numbers": []
+    },
+    {
+      "model": "argon-medium",
+      "task": "trap_units",
+      "attempts_used": 2,
+      "rewards": [
+        0.0,
+        1.0
+      ],
+      "fresh_reward": 1.0,
+      "fresh_accepted": true,
+      "copied_feedback_numbers": []
+    }
+  ],
+  "v3_2": {
+    "unknown_noise": [
+      {
+        "model": "argon-medium",
+        "time": "end_of_dropout",
+        "n_runs": 1,
+        "coverage95": 0.9666666666666667,
+        "mean_nees": 2.8665114717862523,
+        "per_run_coverage95": [
+          0.9666666666666667
+        ],
+        "per_run_mean_nees": [
+          2.8665114717862523
+        ]
+      },
+      {
+        "model": "argon-medium",
+        "time": "end_of_trajectory",
+        "n_runs": 1,
+        "coverage95": 0.8,
+        "mean_nees": 3.9151777563329313,
+        "per_run_coverage95": [
+          0.8
+        ],
+        "per_run_mean_nees": [
+          3.9151777563329313
+        ]
+      }
+    ],
+    "close_routes": [
+      {
+        "model": "argon-medium",
+        "chosen": "B",
+        "stated": 1.0,
+        "measured": 1.0,
+        "measured_wilson95": [
+          0.9811539940816791,
+          1.0
+        ],
+        "pass": true,
+        "rates": {
+          "A": 0.94,
+          "B": 1.0
+        }
+      },
+      {
+        "model": "argon-medium",
+        "chosen": "B",
+        "stated": 1.0,
+        "measured": 1.0,
+        "measured_wilson95": [
+          0.9811539940816791,
+          1.0
+        ],
+        "pass": true,
+        "rates": {
+          "A": 0.94,
+          "B": 1.0
+        }
+      },
+      {
+        "model": "argon-medium",
+        "chosen": "B",
+        "stated": 1.0,
+        "measured": 1.0,
+        "measured_wilson95": [
+          0.9811539940816791,
+          1.0
+        ],
+        "pass": true,
+        "rates": {
+          "A": 0.94,
+          "B": 1.0
+        }
+      }
+    ]
+  },
+  "cost_usd": {
+    "argon-medium": 4.627
+  }
+}
