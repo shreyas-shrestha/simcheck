@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.DS_Store
+# regenerable
+scenarios/
+runs/_reference/
+runs/fake-good/
+runs/fake-learner/
+runs/cost_ledger.jsonl

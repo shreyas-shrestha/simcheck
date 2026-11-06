@@ -1,0 +1,20 @@
+{
+  "A": {
+    "arrived": true,
+    "collision": false,
+    "steps": 47,
+    "success": true,
+    "seconds": 0.061,
+    "ate_rmse_m": 0.09239834125075559,
+    "max_pos_err_m": 0.20802865363663442
+  },
+  "B": {
+    "arrived": true,
+    "collision": false,
+    "steps": 58,
+    "success": true,
+    "seconds": 0.038,
+    "ate_rmse_m": 0.04975071035041696,
+    "max_pos_err_m": 0.16199582143799623
+  }
+}

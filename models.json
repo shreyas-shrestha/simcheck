@@ -1,0 +1,17 @@
+{
+  "_note": "One-line model swap: pass --model <key>. 'model' is the API model string sent; the ID the API reports back is recorded per call. Fill in prices (USD per million tokens) before real runs: the cost cap uses them.",
+  "astra": {
+    "provider": "openai",
+    "model": "gpt-6-astra",
+    "settings": {"max_completion_tokens": 32000},
+    "price_per_mtok": {"input": null, "output": null}
+  },
+  "argon": {
+    "provider": "gemini",
+    "model": "gemini-argon",
+    "settings": {"maxOutputTokens": 32000},
+    "price_per_mtok": {"input": null, "output": null}
+  },
+  "fake-good": {"provider": "fake", "model": "fake-good", "script": ["reference"], "settings": {}, "price_per_mtok": {"input": 0, "output": 0}},
+  "fake-learner": {"provider": "fake", "model": "fake-learner", "script": ["cov_x10", "always_A", "reference"], "settings": {}, "price_per_mtok": {"input": 0, "output": 0}}
+}
