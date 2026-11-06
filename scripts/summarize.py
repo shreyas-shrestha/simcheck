@@ -142,6 +142,15 @@ def cost(roots):
     return {k: round(v, 3) for k, v in sorted(spend.items())}
 
 
+def mcnemar(b, c):
+    """Exact two-sided McNemar test on discordant pairs (fixed vs lost)."""
+    n = b + c
+    if n == 0:
+        return 1.0
+    tail = sum(math.comb(n, i) for i in range(min(b, c) + 1)) / 2 ** n
+    return min(1.0, 2 * tail)
+
+
 def with_vs_without(groups):
     """Per model and version: first try (no verifier feedback) vs after the closed loop, and what a
     'runs and is accurate' grader would have accepted on the first try."""
@@ -152,21 +161,26 @@ def with_vs_without(groups):
     for (version, model), reps in sorted(by.items()):
         first = sum(bool(r.get("accepted")) for r in reps)
         naive = sum(bool(r["layers"]["execution"]["pass"] and r["layers"].get("accuracy", {}).get("pass")) for r in reps)
-        looped, finals, echo = 0, 0, set()
+        looped, finals, echo, fixed, broke = 0, 0, set(), 0, 0
         for r in reps:
             sm = _json(Path(r["_dir"]) / "summary.json") or {}
             if sm.get("max_attempts", 1) > 1:  # finished the closed loop (and fresh re-grade)
                 looped += 1
                 last = sm.get("rounds", [{}])[-1]
                 fresh = (sm.get("final_fresh") or {}).get("accepted")
-                finals += bool(last.get("accepted") and fresh is not False)
+                ok = bool(last.get("accepted") and fresh is not False)
+                finals += ok
+                fixed += ok and not r.get("accepted")
+                broke += (not ok) and bool(r.get("accepted"))
                 echo |= set(sm.get("feedback_numbers_in_final_code", []))
         n = len(reps)
         out.append({"version": version, "model": model, "n": n,
                     "first_try": first, "first_try_wilson95": wilson(first, n),
                     "after_loop_n": looped, "after_loop": finals, "after_loop_wilson95": wilson(finals, looped),
                     "accuracy_only_grader_accepts": naive, "wrongly_accepted_by_accuracy_only": naive - first,
-                    "copied_feedback_numbers": sorted(echo)})
+                    "copied_feedback_numbers": sorted(echo),
+                    "fixed_by_feedback": fixed, "first_try_pass_lost": broke,
+                    "mcnemar_exact_p": mcnemar(fixed, broke)})
     return out
 
 
@@ -188,7 +202,8 @@ def chart(rows, path):
             lo, hi = r["wilson95"]
             ax.bar(x, r["rate"], w * 0.9, color=colors[j % len(colors)], label=m if i == 0 else None)
             ax.errorbar(x, r["rate"], yerr=[[r["rate"] - lo], [hi - r["rate"]]], color="#333", capsize=3, lw=1)
-            ax.text(x, 0.02, f"{r['passed']}/{r['n']}", ha="center", va="bottom", fontsize=7, color="white")
+            ax.text(x, 0.02, f"{r['passed']}/{r['n']}", ha="center", va="bottom", fontsize=7,
+                    color="white" if r["rate"] > 0.08 else "#333")
     ax.set_xticks(range(len(tasks)), [f"{t}\n({next(r['version'] for r in rows if r['task'] == t)})" for t in tasks],
                   fontsize=8)
     ax.set_ylim(0, 1.05)
@@ -200,16 +215,46 @@ def chart(rows, path):
     fig.savefig(path)
 
 
+def chart_delta(rows, path):
+    """First try vs after SimCheck feedback, per model and spec version (only rows that ran the loop)."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    rows = [r for r in rows if r["after_loop_n"]]
+    if not rows:
+        return
+    fig, ax = plt.subplots(figsize=(max(6.5, 2.2 * len(rows)), 3.8), dpi=150)
+    for i, r in enumerate(rows):
+        for j, (k, n, ci, c, lab) in enumerate((
+                (r["first_try"], r["n"], r["first_try_wilson95"], "#9aa5b1", "first try (no feedback)"),
+                (r["after_loop"], r["after_loop_n"], r["after_loop_wilson95"], "#2a6fdb",
+                 "after SimCheck feedback (fresh seeds)"))):
+            x, v = i + (j - 0.5) * 0.38, k / n
+            ax.bar(x, v, 0.34, color=c, label=lab if i == 0 else None)
+            ax.errorbar(x, v, yerr=[[v - ci[0]], [ci[1] - v]], color="#333", capsize=3, lw=1)
+            ax.text(x, 0.03, f"{k}/{n}", ha="center", va="bottom", fontsize=9, color="white", fontweight="bold")
+    ax.set_xticks(range(len(rows)), [f"{r['model']}\n{r['version']}" for r in rows], fontsize=8)
+    ax.set_ylim(0, 1.08)
+    ax.set_ylabel("accepted (all layers)")
+    ax.set_title("Pass rate without vs with SimCheck feedback (Wilson 95%)", fontsize=10)
+    ax.legend(fontsize=8, frameon=False, loc="upper left", bbox_to_anchor=(0, 1.2), ncol=2)
+    ax.spines[["top", "right"]].set_visible(False)
+    fig.tight_layout()
+    fig.savefig(path)
+
+
 def to_md(s):
     f = lambda x: "-" if x is None else f"{x:.2f}"
     L = ["## With vs without SimCheck", "",
          "| Version | Model | First try (no feedback) | After SimCheck feedback (fresh seeds) | "
-         "Accuracy-only grader accepts | ...of which actually failing | Copied feedback numbers |", "|" + "---|" * 7]
+         "Fixed / lost by feedback | McNemar exact p | Accuracy-only grader accepts | ...of which actually failing | "
+         "Copied feedback numbers |", "|" + "---|" * 9]
     for r in s["with_vs_without"]:
         L.append(f"| {r['version']} | {r['model']} | {r['first_try']}/{r['n']} "
                  f"[{r['first_try_wilson95'][0]:.2f}, {r['first_try_wilson95'][1]:.2f}] | "
                  f"{r['after_loop']}/{r['after_loop_n']} [{r['after_loop_wilson95'][0]:.2f}, "
-                 f"{r['after_loop_wilson95'][1]:.2f}] | {r['accuracy_only_grader_accepts']}/{r['n']} | "
+                 f"{r['after_loop_wilson95'][1]:.2f}] | {r['fixed_by_feedback']} / {r['first_try_pass_lost']} | "
+                 f"{r['mcnemar_exact_p']:.3g} | {r['accuracy_only_grader_accepts']}/{r['n']} | "
                  f"{r['wrongly_accepted_by_accuracy_only']} | {', '.join(r['copied_feedback_numbers']) or '-'} |")
     L += ["", "## First-attempt pass rate per task", "",
          "| Version | Model | Task | Passed | Rate | Wilson 95% | Mean reward | Failed layers |", "|" + "---|" * 8]
@@ -259,6 +304,7 @@ def main():
     (out / "summary.md").write_text(to_md(s) + "\n")
     if rows:
         chart(rows, out / "first_try.png")
+        chart_delta(s["with_vs_without"], out / "with_vs_without.png")
     print(to_md(s))
 
 
