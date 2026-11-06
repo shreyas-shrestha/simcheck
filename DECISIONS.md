@@ -32,7 +32,7 @@ Last updated 2026-11-06, after integrating the sandbox and harness work.
 
 | # | Decision | Status | Notes |
 |---|---|---|---|
-| 15 | Sandbox timeouts and limits | **open** | 30 s per call (900 s for `choose_route`, 120 s for `build_graph`), 2 GB, 2 CPUs, 256 pids, 64 MB /tmp. There is no total budget per evaluation. A full reference verify through Docker took 20 s, but a slow agent (0.77 s per paired trial in `bench_slow.py`) would need about 3 min for T=200, with no upper bound. |
+| 15 | Sandbox timeouts and limits | decided (teammate, `config.json` `execution`) | 30 s per call, 900 s for `choose_route`, 3600 s total per grading, plus 2 GB, 2 CPUs, 256 pids and 64 MB /tmp. But see #25. A full reference verify through Docker took 20 s, but a slow agent (0.77 s per paired trial in `bench_slow.py`) would need about 3 min for T=200, with no upper bound. |
 | 16 | Fresh state per trial | decided (teammate) | One worker per evaluation, with `make` per episode. Leaks are caught by re-running dataset 0. |
 | 17 | Frozen thresholds and T | decided (teammate) | `config.json`: T=200, K=30, α=0.01, margin 1.0 nat, abs_tol 0.25 m, δ=0.05, stated tolerance 0.15. |
 
@@ -45,4 +45,5 @@ Last updated 2026-11-06, after integrating the sandbox and harness work.
 | 20 | README isolation note | **open** (teammate) | The README still says Docker never ran. The Docker path is now tested: 16 sandbox tests, plus a full reference verify accepted under Docker. The Astra smoke run in `runs/astra/standard/` used the subprocess fallback and the old task.md, so re-run it under Docker. |
 | 22 | `agent_worker.py` serialization | **open** (teammate) | A non-JSON-serializable return (e.g. a `gtsam.Pose2`) kills the worker instead of returning `ok: false`. It is graded as an execution failure, but the message is a raw traceback. Pinned by `test_pose2_return_is_execution_failure`. |
 | 23 | Tracked run outputs | **open** (teammate) | `runs/_trusted/...` and `runs/astra/...` are committed even though `.gitignore` has `runs/*`. Note that `scripts/verify_trusted.py` overwrites `runs/_trusted/.../report.json`. |
+| 25 | `Budgeted` overrides the per-call timeout | **open** (teammate) | `Budgeted.call` passes `min(timeout or left, left)`, so `step`/`make` (sent with no timeout) get the remaining budget, not 30 s. Measured: a hung `step()` raised after 19.9 s with a 3 s call limit and a 20 s budget. Suggested fix: `min(timeout or getattr(self.runner, "call_timeout", left), left)`. |
 | 24 | Stale `scenarios/` caches | note | Delete `scenarios/` on any machine that generated it before the task.md change. |

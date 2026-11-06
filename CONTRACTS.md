@@ -14,16 +14,18 @@ docker run --rm -i --name simcheck-<12 hex>
   --network none --read-only --tmpfs /tmp:rw,noexec,nosuid,size=64m
   --cap-drop ALL --security-opt no-new-privileges
   --memory 2g --cpus 2 --pids-limit 256 --user 65534:65534
-  -v <tmp>/agent:/agent:ro          # solution.py + agent_worker.py (copies)
+  -v <tmp>/agent:/agent:ro          # solution.py only (copy)
   -v <tmp>/public:/public:ro        # copy of scenarios/<id>/public, only if public_dir is given
-  simcheck-agent:latest python -I /agent/agent_worker.py /agent/solution.py
+  simcheck-agent:latest python -I /opt/simcheck/agent_worker.py /agent/solution.py
 ```
 - No `-e`: the container gets no host env vars and no API keys. The docker CLI itself runs with only `PATH`.
 - Before mounting `public/`, `check_public_dir` refuses it if it contains `truth.json`, a `hidden/` folder or any
   symlink. `hidden/` never leaves the parent process.
 - `close()` (and a call timeout) runs `docker kill <name>`, and an `atexit` hook kills any container whose
   runner was never closed.
-- Image: `docker build -t simcheck-agent:latest .` (Python 3.12, gtsam 4.3.0, numpy 2.5.4, scipy 1.18.1).
+- Image: `docker build -t simcheck-agent:latest .` (Python 3.12, gtsam 4.3.0, numpy 2.5.4, scipy 1.18.1). The worker
+  is baked in at `/opt/simcheck/agent_worker.py` (root-owned, read-only), so **rebuild after changing it**.
+  `.dockerignore` limits the build context to that one file.
 - Fallback: `make_runner` uses `SubprocessRunner` (a `python -I` process with an empty env; **not isolation**) when
   the image or daemon is unavailable. With `SIMCHECK_REQUIRE_DOCKER=1` it raises `RunnerError` instead. Every
   report records the runner in `isolation`.
@@ -52,8 +54,11 @@ docker run --rm -i --name simcheck-<12 hex>
   because serialization happens outside its try/except.
 - **Values are not validated in the worker.** `verifier.check_matrix` checks shape, finiteness, symmetry
   (`‖P−Pᵀ‖ ≤ 1e-9‖P‖`) and Cholesky. NaN and Inf pass through the protocol so that check can reject them.
-- **Timeouts:** `call_timeout` (default 30 s) applies per request. `choose_route` gets 900 s and `build_graph` 120 s.
-  There is no total session budget.
+- **Timeouts:** set in `config.json` `execution`: `call_timeout_s` 30 (per request), `choose_route_timeout_s` 900,
+  and `total_budget_s` 3600. `verify()` wraps the runner in `Budgeted`, and every call shares the total deadline;
+  exceeding any limit is an execution failure. `build_graph` gets 120 s. (Known issue: under `Budgeted`, a call
+  that passes no timeout gets the remaining budget instead of `call_timeout_s`. See DECISIONS.md #25.)
+- **Feedback:** `sandbox.clean()` strips host paths from tracebacks, leaving only file names, before they reach the model.
 - **Fresh state:** each dataset gets a new `make`. `verify()` re-runs dataset 0 after the other K−1 datasets, and
   it must match (poses `atol=1e-6`, covariances element-wise `rtol=1e-6`). This catches both nondeterminism and
   state leaked through module globals.
