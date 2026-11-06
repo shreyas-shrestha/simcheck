@@ -304,7 +304,7 @@ def _say(msg):
 def git_commit():
     try:
         h = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True).stdout.strip()
-        dirty = subprocess.run(["git", "status", "--porcelain", "--", "simcheck", "config.json", "models.json"],
+        dirty = subprocess.run(["git", "status", "--porcelain", "--", "simcheck", "config.json", "config_v3.2.json", "models.json"],
                                cwd=ROOT, capture_output=True, text=True).stdout.strip()
         return h + ("-dirty" if dirty else "")
     except OSError:
@@ -346,6 +346,7 @@ def run_job(model_key, task, cost, decision_only=False, prefer_docker=True, echo
                 _write(d / "call.json", {"usage": resp["usage"], "usd": usd, "seconds": time.perf_counter() - t0,
                                          "meta": resp["raw_meta"]})
                 _write(d / "run_meta.json", {"git_commit": git_commit(), "task_md_version": generator.task_md_version(),
+                                             "config": generator.config_path().name,
                                              "model_id_reported": resp["model_id"], "requested_model": cfg["model"],
                                              "settings": cfg["settings"], "time": time.time()})
             try:

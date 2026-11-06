@@ -7,6 +7,7 @@ Landmarks sit far enough from route A that none is ever within max_range of it.
 """
 import argparse
 import json
+import os
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -37,6 +38,8 @@ class ScenarioConfig:
     gap_half_width: float = 0.45     # wall offset from the route-A centreline
     detour_height: float = 3.0
     dataset_route: str = "B"         # B has turns, so frame/unit bugs are visible
+    unknown_noise: bool = False      # v3.2: true odometry std = nominal x scale, scale ~ U(noise_scale_range)
+    noise_scale_range: tuple = (0.5, 3.0)
     extra: dict = field(default_factory=dict)
 
 
@@ -81,7 +84,26 @@ def build_spec(cfg: ScenarioConfig) -> dict:
         "walls": walls,
         "success_definition": "reach within arrival_tolerance of route end within max_steps with zero collisions",
         "objective": "maximize collision-free arrival probability; distance breaks close ties",
+        **({"odom_noise_scale_range": list(cfg.noise_scale_range)} if cfg.unknown_noise else {}),
     }
+
+
+def odom_noise_scale(spec, seed):
+    """unknown_noise: the hidden per-scenario (or per-trial) odometry noise scale; 1.0 otherwise."""
+    lo_hi = spec.get("odom_noise_scale_range")
+    if not lo_hi:
+        return 1.0
+    return float(np.random.default_rng([int(seed), 0x5CA1E]).uniform(*lo_hi))
+
+
+def true_spec(spec, seed):
+    """The spec the simulator runs: public spec with the hidden odometry noise scale applied."""
+    k = odom_noise_scale(spec, seed)
+    if k == 1.0:
+        return spec
+    out = dict(spec, sensor_noise_std=dict(spec["sensor_noise_std"]))
+    out["sensor_noise_std"]["odom"] = [k * x for x in spec["sensor_noise_std"]["odom"]]
+    return out
 
 
 # The original v3.1 conventions block, kept byte-for-byte so repeat runs get the exact v3.1 prompt.
@@ -111,9 +133,18 @@ collision-free arrival rate of the chosen route in closed-loop simulation driven
 TASK_MD_VERSIONS = {"v3.1": _CONVENTIONS_V31, "v3.2": _CONVENTIONS_V32}
 
 
+def config_path() -> Path:
+    """$SIMCHECK_CONFIG, else config_v3.2.json on the v3.2 branch, else config.json."""
+    env = os.environ.get("SIMCHECK_CONFIG")
+    if env:
+        return Path(env) if Path(env).is_absolute() else ROOT / env
+    v32 = ROOT / "config_v3.2.json"
+    return v32 if v32.exists() else ROOT / "config.json"
+
+
 def task_md_version() -> str:
-    """config.json "task_md_version"; "v3.1" (the original text) when unset."""
-    cfg = ROOT / "config.json"
+    """The config's "task_md_version"; "v3.1" (the original text) when unset."""
+    cfg = config_path()
     return (json.loads(cfg.read_text()).get("task_md_version") if cfg.exists() else None) or "v3.1"
 
 
@@ -133,6 +164,11 @@ def task_md(spec: dict, version: str | None = None) -> str:
         notes.append("- There is no GPS in this scenario.")
     if not spec["landmarks"]:
         notes.append("- There are no landmarks in this scenario.")
+    if spec.get("odom_noise_scale_range"):
+        lo, hi = spec["odom_noise_scale_range"]
+        notes.append(f"- ODOMETRY NOISE: odometry noise std is between {lo:g}x and {hi:g}x the nominal value in "
+                     "`sensor_noise_std.odom`; the exact value is not given (`odom_noise_scale_range`). Other noise "
+                     "values are exact.")
     trap = "\n".join(notes) or "- None."
     return f"""# SimCheck task
 
@@ -147,7 +183,8 @@ Scenario-specific notes:
 
 def generate(cfg: ScenarioConfig, scenario_id: str, out_root: Path = ROOT / "scenarios") -> Path:
     spec = build_spec(cfg)
-    ep = sim.run_episode(spec, cfg.dataset_route, cfg.seed, oracle=True, max_steps=cfg.n_poses - 1)
+    ep = sim.run_episode(true_spec(spec, cfg.seed), cfg.dataset_route, cfg.seed, oracle=True,
+                         max_steps=cfg.n_poses - 1)
     d = out_root / scenario_id
     (d / "public").mkdir(parents=True, exist_ok=True)
     (d / "hidden").mkdir(parents=True, exist_ok=True)
@@ -156,7 +193,8 @@ def generate(cfg: ScenarioConfig, scenario_id: str, out_root: Path = ROOT / "sce
     (d / "public" / "task.md").write_text(task_md(spec))
     cfg_d = asdict(cfg)
     (d / "hidden" / "truth.json").write_text(json.dumps(
-        {"config": cfg_d, "poses": ep["truth"].tolist(), "outcome": ep["outcome"]}))
+        {"config": cfg_d, "poses": ep["truth"].tolist(), "outcome": ep["outcome"],
+         "odom_noise_scale": odom_noise_scale(spec, cfg.seed)}))
     return d
 
 

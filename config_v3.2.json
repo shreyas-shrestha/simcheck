@@ -1,0 +1,74 @@
+{
+  "spec_version": "3.2",
+  "route_trials": {
+    "T": 200,
+    "frozen": true,
+    "frozen_on": "2026-11-06",
+    "basis": "runs/benchmark/bench_20.json: reference in-process 0.058 s per paired trial (A 0.017 s, B 0.042 s); worst-case batch-LM+Marginals proxy 0.77 s per paired trial (scripts/bench_slow.py). T=200 -> about 12 s (reference) to about 155 s (worst-case proxy) per evaluation before Docker IPC overhead. At T=200 the 95% Wilson half-width is at most 0.069, below the 0.15 stated-probability tolerance. Decision made once at T; intermediate results are progress only.",
+    "benchmark_observed": {
+      "route_A_success": 0.6,
+      "route_B_success": 1.0,
+      "n": 20
+    }
+  },
+  "thresholds": {
+    "status": "fixed on dev seeds 2026-11-06, before any agent run",
+    "frozen": true,
+    "accuracy_abs_tol_m": 0.25,
+    "accuracy_ref_multiplier": 1.5,
+    "calibration_K": 30,
+    "calibration_alpha": 0.01,
+    "calibration_coverage_p": 0.95,
+    "nees_gate_3dof": 7.81,
+    "nll_margin_nats": 1.0,
+    "regret_delta": 0.05,
+    "stated_prob_tolerance": 0.15,
+    "dev_validation": {
+      "reference_standard_dev": "ATE 0.052 m (bound 0.329); dropout-end coverage 30/30, NEES 2.72; end coverage 27/30 (p=0.188), NEES 3.01; route B chosen, regret CI [0,0]; accepted, reward 1.0",
+      "reference_prior_needed_dev": "ATE 0.414 m (bound 0.871); coverage 29/30 at both times, NEES 3.05 / 3.67",
+      "nees_lower_bound_K30": "chi2.ppf(0.005, 90)/30 = 1.97",
+      "broken_caught": "cov_x0.1 -> overconfidence (3/30, 5/30); cov_x10 -> underconfidence (NEES 0.27/0.30); wrong_odom_frame -> accuracy (ATE 0.456 > 0.329); missing_prior -> underconfidence + NLL; always_A -> route fail (regret CI [0.295, 0.425])",
+      "script": "scripts/quick_layers.py dev, scripts/verify_trusted.py <name> <task> dev"
+    },
+    "layer4_pass_rule": "regret outcome 'pass' AND stated-probability check"
+  },
+  "seeds": {
+    "trial_seed_base": {
+      "dev": 1000000,
+      "eval": 2000000,
+      "fresh": 3000000,
+      "reference_choose_route": 10000000
+    },
+    "note": "disjoint by construction; scenario seeds use the same bases"
+  },
+  "reward_weights": {
+    "exec": 0.1,
+    "accuracy": 0.2,
+    "calibration": 0.4,
+    "route": 0.3
+  },
+  "execution": {
+    "call_timeout_s": 30,
+    "choose_route_timeout_s": 900,
+    "total_budget_s": 3600,
+    "note": "per-message, choose_route and whole-grading wall-clock limits; exceeding any is an execution failure"
+  },
+  "task_md_version": "v3.2",
+  "task_md_version_note": "v3.2 conventions text (x0 prior, SI noise units, covariance frame, grading summary).",
+  "v3_2_changes": {
+    "feedback": "route feedback states only the direction of a stated-probability miss ('too high/too low by more than tolerance') and never reports measured success rates",
+    "tasks_added": {
+      "close_routes": "gap_half_width 0.575 (A and B 5-15 pp apart with the reference on dev seeds)",
+      "unknown_noise": "true odometry std = nominal x k, k ~ U(0.5, 3.0) per scenario / per route trial (hidden); spec states the range"
+    },
+    "thresholds": "unchanged from v3.1",
+    "frozen": true,
+    "frozen_on": "2026-11-06, before any v3.2 agent run",
+    "dev_validation": {
+      "reference_close_routes_dev": "accepted, reward 1.0; route rates A 0.875 [0.822, 0.914], B 1.0 [0.981, 1.0] at T=200 (12.5 pp apart)",
+      "reference_unknown_noise_dev": "accepted, reward 1.0 (527 s); scale estimate tracks truth (e.g. 1.94 vs 2.25, 2.59 vs 2.33); route rates A 0.465, B 1.0",
+      "nominal_noise_unknown_noise_dev": "rejected by calibration: end of trajectory 24/30 covered (p=0.0033), mean NEES 6.17, NLL -3.96 > -4.10 bound; reward 0.6",
+      "script": "scripts/verify_trusted.py <name> <task> dev; simcheck/tests/test_v32.py"
+    }
+  }
+}
