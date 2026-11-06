@@ -84,7 +84,43 @@ def build_spec(cfg: ScenarioConfig) -> dict:
     }
 
 
-def task_md(spec: dict) -> str:
+# The original v3.1 conventions block, kept byte-for-byte so repeat runs get the exact v3.1 prompt.
+_CONVENTIONS_V31 = """Conventions:
+- `initial_pose.cov_diag_variances` are VARIANCES. Every `*_noise_std` entry is a STANDARD DEVIATION in SI
+  units (metres, radians), regardless of `input_units`.
+- Odometry noise is Pose2 tangent-space noise on the relative pose (x_{k-1} -> x_k), body frame.
+- Landmark bearing is measured relative to the robot heading. GPS gives world-frame x, y.
+- Returned covariance is 3x3 in the local tangent frame of the returned pose (GTSAM convention).
+"""
+
+# v3.2: states the x_0 prior, SI noise units and the covariance frame explicitly, plus a grading summary.
+_CONVENTIONS_V32 = """Conventions:
+- The true initial pose x_0 is sampled from the stated prior N(initial_pose.mean, diag(cov_diag_variances));
+  it is not known exactly.
+- `initial_pose.cov_diag_variances` are VARIANCES. Every `*_noise_std` entry is a STANDARD DEVIATION and is
+  always in SI units (metres, radians), even when measurements arrive in mm or degrees (`input_units`).
+- Odometry noise is Pose2 tangent-space noise on the relative pose (x_{k-1} -> x_k), body frame.
+- Landmark bearing is measured relative to the robot heading. GPS gives world-frame x, y.
+- Returned covariance is 3x3 in the local tangent frame of the returned pose (the GTSAM Pose2 marginal
+  convention, ordered x, y, theta), not in the world frame.
+
+Grading: trajectory accuracy, consistency of the reported uncertainty across independent runs, and
+collision-free arrival rate of the chosen route in closed-loop simulation driven by your estimator.
+"""
+
+TASK_MD_VERSIONS = {"v3.1": _CONVENTIONS_V31, "v3.2": _CONVENTIONS_V32}
+
+
+def task_md_version() -> str:
+    """config.json "task_md_version"; "v3.1" (the original text) when unset."""
+    cfg = ROOT / "config.json"
+    return (json.loads(cfg.read_text()).get("task_md_version") if cfg.exists() else None) or "v3.1"
+
+
+def task_md(spec: dict, version: str | None = None) -> str:
+    version = version or task_md_version()
+    if version not in TASK_MD_VERSIONS:
+        raise ValueError(f"unknown task_md_version {version!r}; expected one of {sorted(TASK_MD_VERSIONS)}")
     notes = []
     if spec["input_units"]["odom"] != "m" or spec["input_units"]["bearing"] != "rad":
         notes.append(f"- INPUT UNITS: odometry dx/dy arrive in {spec['input_units']['odom']}, "
@@ -103,13 +139,7 @@ def task_md(spec: dict) -> str:
 Write `solution.py` implementing `make_estimator(public_spec)`, `Estimator.step(new_measurements)` and
 `choose_route(public_spec)` as described in the contract. Use GTSAM. Read `spec.json` for every parameter.
 
-Conventions:
-- `initial_pose.cov_diag_variances` are VARIANCES. Every `*_noise_std` entry is a STANDARD DEVIATION in SI
-  units (metres, radians), regardless of `input_units`.
-- Odometry noise is Pose2 tangent-space noise on the relative pose (x_{{k-1}} -> x_k), body frame.
-- Landmark bearing is measured relative to the robot heading. GPS gives world-frame x, y.
-- Returned covariance is 3x3 in the local tangent frame of the returned pose (GTSAM convention).
-
+{TASK_MD_VERSIONS[version]}
 Scenario-specific notes:
 {trap}
 """

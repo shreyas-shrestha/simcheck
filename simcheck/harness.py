@@ -22,7 +22,7 @@ from pathlib import Path
 
 import certifi
 
-from simcheck import verifier as V
+from simcheck import generator, verifier as V
 from simcheck.sandbox import make_runner
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -81,11 +81,25 @@ class CostTracker:
     def __init__(self, cap_usd, ledger):
         self.cap, self.ledger, self.lock = cap_usd, Path(ledger), threading.Lock()
         self.spent = sum(json.loads(l)["usd"] for l in self.ledger.read_text().splitlines()) if self.ledger.exists() else 0.0
+        self.reserved = 0.0  # worst-case cost of calls currently in flight
 
     def check(self):
         with self.lock:
             if self.spent >= self.cap:
                 raise CostCapReached(f"cost cap ${self.cap:.2f} reached (spent ${self.spent:.2f})")
+
+    def reserve(self, usd):
+        """Hold a call's worst-case cost before making it, so concurrent calls can't jointly overshoot the cap."""
+        with self.lock:
+            if self.spent + self.reserved + usd > self.cap:
+                raise CostCapReached(f"cost cap ${self.cap:.2f}: spent ${self.spent:.2f}, in flight "
+                                     f"${self.reserved:.2f}, this call up to ${usd:.2f}")
+            self.reserved += usd
+        return usd
+
+    def release(self, usd):
+        with self.lock:
+            self.reserved -= usd
 
     def add(self, usd, tag):
         with self.lock:
@@ -100,6 +114,13 @@ def price(model_cfg, usage):
     if p["input"] is None or p["output"] is None:
         raise RuntimeError(f"set price_per_mtok for {model_cfg['model']} in models.json before real runs (cost cap)")
     return (usage["input_tokens"] * p["input"] + usage["output_tokens"] * p["output"]) / 1e6
+
+
+def worst_case_usd(model_cfg, system, user):
+    """Upper bound for one call: ~3 chars per input token (conservative) plus the full output token limit."""
+    s = model_cfg["settings"]
+    max_out = s.get("max_completion_tokens") or s.get("maxOutputTokens") or 32000
+    return price(model_cfg, {"input_tokens": (len(system) + len(user)) // 3 + 100, "output_tokens": max_out})
 
 
 # ---------------------------------------------------------------- providers
@@ -201,7 +222,10 @@ def public_dir(task):
 
 def build_prompt(task, prev_code=None, feedback=None, attempt=1):
     pub = public_dir(task)
-    parts = [(pub / "task.md").read_text(), "## spec.json\n```json\n" + (pub / "spec.json").read_text() + "\n```",
+    # Render task.md from spec.json with config.json "task_md_version" (default "v3.1") instead of reading the
+    # cached scenarios/<id>/public/task.md, so the version setting always takes effect.
+    task_text = generator.task_md(json.loads((pub / "spec.json").read_text()))
+    parts = [task_text, "## spec.json\n```json\n" + (pub / "spec.json").read_text() + "\n```",
              "## measurements.json (one example episode; your estimator is graded on many others)\n```json\n"
              + (pub / "measurements.json").read_text() + "\n```", "## Contract\n" + CONTRACT]
     if prev_code is not None:
@@ -211,10 +235,21 @@ def build_prompt(task, prev_code=None, feedback=None, attempt=1):
     return "\n\n".join(parts)
 
 
+def _top_level_defs(code):
+    try:
+        return {n.name for n in ast.parse(code).body if isinstance(n, (ast.FunctionDef, ast.ClassDef))}
+    except SyntaxError:
+        return set()
+
+
 def extract_code(text):
-    """Last fenced python block that defines make_estimator; must parse."""
+    """Prefer the last block that parses and defines BOTH make_estimator and choose_route (a later
+    usage snippet or partial patch must not win). Otherwise: last parseable block defining make_estimator."""
     blocks = re.findall(r"```(?:python|py)?[ \t]*\n(.*?)```", text, flags=re.S)
     syntax_err = None
+    for b in reversed(blocks):
+        if {"make_estimator", "choose_route"} <= _top_level_defs(b):
+            return b
     for b in reversed(blocks):
         if "def make_estimator" in b:
             try:
@@ -283,8 +318,12 @@ def run_job(model_key, task, cost, decision_only=False, prefer_docker=True, echo
                 text = (d / "response.txt").read_text()
             else:
                 cost.check()
+                held = cost.reserve(worst_case_usd(cfg, SYSTEM, prompt))
                 t0 = time.perf_counter()
-                resp = call_model(cfg, SYSTEM, prompt, attempt)
+                try:
+                    resp = call_model(cfg, SYSTEM, prompt, attempt)
+                finally:
+                    cost.release(held)
                 usd = price(cfg, resp["usage"])
                 cost.add(usd, f"{model_key}/{task}/{attempt}")
                 text = resp["text"]

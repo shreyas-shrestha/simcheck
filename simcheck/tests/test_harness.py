@@ -45,6 +45,99 @@ def test_fake_sources_are_self_contained():
         compile(src, v, "exec")
 
 
+# ---- added with the sandbox/harness integration
+
+GOOD = "def make_estimator(s):\n    return None\n\n\ndef choose_route(s):\n    return {}\n"
+
+
+def test_extract_code_prefers_block_with_both_functions():
+    # A later block that only defines make_estimator (e.g. a partial patch) must not win over the full file.
+    text = f"full:\n```python\n{GOOD}```\npatch:\n```python\ndef make_estimator(s):\n    return 2\n```\n"
+    assert harness.extract_code(text) == GOOD
+
+
+def test_extract_code_untagged_and_py_fences():
+    assert harness.extract_code(f"```\n{GOOD}```") == GOOD
+    assert harness.extract_code(f"```py\n{GOOD}```") == GOOD
+
+
+def test_extract_code_skips_unparseable_full_block():
+    text = f"```python\n{GOOD}```\n```python\ndef make_estimator(:\ndef choose_route(s): pass\n```"
+    assert harness.extract_code(text) == GOOD
+
+
+def test_cost_reservation_blocks_concurrent_overshoot(tmp_path):
+    c = harness.CostTracker(1.0, tmp_path / "ledger.jsonl")
+    h1 = c.reserve(0.6)            # first call in flight
+    with pytest.raises(harness.CostCapReached):
+        c.reserve(0.6)             # second concurrent call could push spend past the cap
+    c.release(h1); c.add(0.3, "a")  # first call actually cost 0.3
+    c.release(c.reserve(0.6))      # now 0.3 + 0.6 <= 1.0 fits
+    assert c.reserved == pytest.approx(0.0)
+
+
+def test_worst_case_usd_uses_output_limit():
+    cfg = {"model": "m", "settings": {"max_completion_tokens": 10_000}, "price_per_mtok": {"input": 0.0, "output": 50.0}}
+    assert harness.worst_case_usd(cfg, "", "") == pytest.approx(0.5)
+    cfg["settings"] = {"maxOutputTokens": 20_000}
+    assert harness.worst_case_usd(cfg, "", "") == pytest.approx(1.0)
+
+
+def test_unpriced_model_refused_before_any_call(tmp_path, monkeypatch):
+    called = []
+    monkeypatch.setattr(harness, "call_model", lambda *a, **k: called.append(1))
+    monkeypatch.setitem(harness.MODELS, "unpriced", {"provider": "openai", "model": "x", "settings": {},
+                                                    "price_per_mtok": {"input": None, "output": None}})
+    monkeypatch.setattr(harness, "ROOT", tmp_path)
+    monkeypatch.setattr(harness, "build_prompt", lambda *a, **k: "prompt")
+    with pytest.raises(RuntimeError):
+        harness.run_job("unpriced", "standard", harness.CostTracker(10, tmp_path / "l.jsonl"), echo=lambda *_: None)
+    assert called == []  # previously the paid call happened first and pricing failed afterwards
+
+
+V31_ADDITIONS = ("not in the world frame", "sampled from the stated prior", "always in SI units", "Grading:")
+
+
+def test_v31_prompt_is_byte_identical_to_original_run():
+    # runs/astra/standard/1/prompt.md is the saved prompt of the original v3.1 Astra run. Repeats must send the
+    # exact same bytes, so the default (v3.1) prompt is pinned to it.
+    from simcheck import generator
+    assert generator.task_md_version() == "v3.1"
+    saved = (harness.ROOT / "runs" / "astra" / "standard" / "1" / "prompt.md").read_text()
+    assert harness.build_prompt("standard") == saved
+    assert not any(a in saved for a in V31_ADDITIONS)
+
+
+def test_v31_task_md_matches_original_generator_for_every_task():
+    import subprocess
+    import types
+    from simcheck import generator, verifier as V
+    src = subprocess.run(["git", "show", "23c299d:simcheck/generator.py"], cwd=harness.ROOT,
+                         capture_output=True, text=True)
+    if src.returncode != 0:
+        pytest.skip("original commit 23c299d not available in this checkout")
+    old = types.ModuleType("generator_v31")
+    old.__dict__["__file__"] = generator.__file__
+    exec(compile(src.stdout, "generator_v31", "exec"), old.__dict__)
+    for task in V.TASKS:
+        spec = V.task_spec(task)
+        assert generator.task_md(spec, "v3.1") == old.task_md(spec), task
+
+
+def test_v32_prompt_states_the_conventions(monkeypatch):
+    from simcheck import generator
+    monkeypatch.setattr(generator, "task_md_version", lambda: "v3.2")
+    p = harness.build_prompt("standard")
+    assert all(a in p for a in V31_ADDITIONS)
+    assert "7.81" not in p and "0.25" not in p.split("## spec.json")[0]   # no threshold values
+
+
+def test_unknown_task_md_version_is_rejected():
+    from simcheck import generator, verifier as V
+    with pytest.raises(ValueError, match="task_md_version"):
+        generator.task_md(V.task_spec("standard"), "v9")
+
+
 def test_syntax_error_is_explained():
     with pytest.raises(ValueError, match=r"does not parse: .* at line 3"):
         harness.extract_code("```python\ndef make_estimator(s):\n    pass\ndef _ x(): pass\n```")

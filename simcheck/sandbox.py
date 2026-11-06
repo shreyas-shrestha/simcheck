@@ -6,7 +6,9 @@ SubprocessRunner  fallback when Docker is unavailable. A separate `python -I` pr
                   environment and a temp cwd. This is NOT isolation and every report says so.
 InProcessRunner   trusted code only (reference, broken variants). Same JSON round-trip, no process.
 """
+import atexit
 import json
+import os
 import queue
 import re
 import shutil
@@ -15,6 +17,8 @@ import sys
 import tempfile
 import threading
 import time
+import uuid
+import weakref
 from collections import deque
 from pathlib import Path
 
@@ -112,18 +116,25 @@ class DockerRunner(_ProcRunner):
 
     def __init__(self, solution_path, public_dir=None, image=IMAGE, call_timeout=30.0):
         self.tmp = tempfile.mkdtemp(prefix="simcheck_dock_")
+        # Named, so close() can kill the CONTAINER. Killing only the local `docker run` client leaves
+        # the container running (e.g. a hung agent keeps burning CPU after a timeout).
+        self.name = f"simcheck-{uuid.uuid4().hex[:12]}"
         agent = Path(self.tmp) / "agent"
         agent.mkdir()
         shutil.copy(solution_path, agent / "solution.py")
-        argv = ["docker", "run", "--rm", "-i", "--network", "none", "--read-only", "--tmpfs", "/tmp",
+        argv = ["docker", "run", "--rm", "-i", "--name", self.name,
+                "--network", "none", "--read-only", "--tmpfs", "/tmp:rw,noexec,nosuid,size=64m",
+                "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
                 "--memory", "2g", "--cpus", "2", "--pids-limit", "256", "--user", "65534:65534",
                 "-v", f"{agent}:/agent:ro"]
         if public_dir is not None:
+            check_public_dir(public_dir)
             pub = Path(self.tmp) / "public"
             shutil.copytree(public_dir, pub)
             argv += ["-v", f"{pub}:/public:ro"]
         argv += [image, "python", "-I", "/opt/simcheck/agent_worker.py", "/agent/solution.py"]
         super().__init__(argv, {"PATH": "/usr/local/bin:/usr/bin:/bin"}, self.tmp, call_timeout)
+        _LIVE_DOCKER.add(self)
 
     @staticmethod
     def available(image=IMAGE):
@@ -133,9 +144,27 @@ class DockerRunner(_ProcRunner):
         except (OSError, subprocess.TimeoutExpired):
             return False
 
+    def kill_container(self):
+        try:  # no-op error if it already exited (--rm removes it)
+            subprocess.run(["docker", "kill", self.name], capture_output=True, timeout=30)
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+
     def close(self):
+        self.kill_container()
         super().close()
+        _LIVE_DOCKER.discard(self)
         shutil.rmtree(self.tmp, ignore_errors=True)
+
+
+_LIVE_DOCKER = weakref.WeakSet()
+
+
+@atexit.register
+def _kill_leftover_containers():
+    """If the verifier process exits without closing a runner, don't leave its container behind."""
+    for r in list(_LIVE_DOCKER):
+        r.kill_container()
 
 
 class InProcessRunner:
@@ -170,9 +199,27 @@ class InProcessRunner:
         pass
 
 
+def check_public_dir(public_dir):
+    """Refuse to mount a public/ that contains hidden truth, or symlinks (copytree would follow them)."""
+    public_dir = Path(public_dir)
+    bad = [p for p in [public_dir, *public_dir.rglob("*")]
+           if p.is_symlink() or p.name in ("hidden", "truth.json")]
+    if bad:
+        raise RunnerError(f"refusing to mount {public_dir}: hidden data or symlinks inside: {[str(b) for b in bad[:3]]}")
+
+
+def docker_required():
+    return os.environ.get("SIMCHECK_REQUIRE_DOCKER") == "1"
+
+
 def make_runner(solution_path, public_dir=None, prefer_docker=True, call_timeout=30.0):
+    """Docker if available. With SIMCHECK_REQUIRE_DOCKER=1, a missing daemon/image is an error instead of a
+    silent fall back to the non-isolated SubprocessRunner."""
     if prefer_docker and DockerRunner.available():
         return DockerRunner(solution_path, public_dir, call_timeout=call_timeout)
+    if docker_required():
+        raise RunnerError(f"SIMCHECK_REQUIRE_DOCKER=1 but Docker is not usable (daemon down or image {IMAGE} "
+                          f"missing; build with `docker build -t {IMAGE} .`), or --no-docker was passed")
     return SubprocessRunner(solution_path, call_timeout=call_timeout)
 
 
@@ -187,7 +234,10 @@ class Budgeted:
         left = self.deadline - time.monotonic()
         if left <= 0:
             raise RunnerError(f"total time limit of {self.seconds:.0f}s for grading exceeded")
-        return self.runner.call(req, timeout=min(timeout or left, left))
+        # A call without its own timeout (make/step) keeps the runner's per-call limit; the total budget only
+        # caps it. Using `timeout or left` here made a hung step() wait for the whole remaining budget.
+        per_call = timeout or getattr(self.runner, "call_timeout", None) or left
+        return self.runner.call(req, timeout=min(per_call, left))
 
     def close(self):
         self.runner.close()
