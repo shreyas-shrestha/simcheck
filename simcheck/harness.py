@@ -12,12 +12,15 @@ import ast
 import json
 import os
 import re
+import ssl
 import threading
 import time
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+
+import certifi
 
 from simcheck import verifier as V
 from simcheck.sandbox import make_runner
@@ -101,12 +104,15 @@ def price(model_cfg, usage):
 
 # ---------------------------------------------------------------- providers
 
+_SSL = ssl.create_default_context(cafile=certifi.where())  # python.org builds ship without CA certs
+
+
 def _post(url, body, headers, retries=5):
     data = json.dumps(body).encode()
     for i in range(retries):
         req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json", **headers})
         try:
-            with urllib.request.urlopen(req, timeout=900) as r:
+            with urllib.request.urlopen(req, timeout=900, context=_SSL) as r:
                 return json.loads(r.read())
         except urllib.error.HTTPError as e:
             if e.code in (429, 500, 502, 503, 504) and i < retries - 1:
