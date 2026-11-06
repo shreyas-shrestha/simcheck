@@ -23,6 +23,18 @@ from simcheck import verifier as V
 from simcheck.sandbox import make_runner
 
 ROOT = Path(__file__).resolve().parent.parent
+
+
+def _load_dotenv(path=ROOT / ".env"):
+    """KEY=value lines from a gitignored .env; real environment variables win."""
+    if path.exists():
+        for line in path.read_text().splitlines():
+            k, sep, v = line.strip().partition("=")
+            if sep and not k.startswith("#"):
+                os.environ.setdefault(k.strip().removeprefix("export "), v.strip().strip("\"'"))
+
+
+_load_dotenv()
 MODELS = json.loads((ROOT / "models.json").read_text())
 N_ATTEMPTS = 3  # initial + 2 revisions
 EXAMPLE_SEED_SET = "dev"  # the agent sees one dev-seed scenario; grading uses eval, then fresh

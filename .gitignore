@@ -8,3 +8,5 @@ runs/_reference/
 runs/fake-good/
 runs/fake-learner/
 runs/cost_ledger.jsonl
+# API keys
+.env

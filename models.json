@@ -3,15 +3,51 @@
   "astra": {
     "provider": "openai",
     "model": "gpt-6-astra",
-    "settings": {"max_completion_tokens": 32000},
-    "price_per_mtok": {"input": null, "output": null}
+    "settings": {
+      "max_completion_tokens": 32000
+    },
+    "price_per_mtok": {
+      "input": 10.0,
+      "output": 50.0
+    },
+    "_price_source": "third-party listings Nov 2026 ($10/$50 per M tokens); confirm on OpenAI's pricing page"
   },
   "argon": {
     "provider": "gemini",
     "model": "gemini-argon",
-    "settings": {"maxOutputTokens": 32000},
-    "price_per_mtok": {"input": null, "output": null}
+    "settings": {
+      "maxOutputTokens": 32000
+    },
+    "price_per_mtok": {
+      "input": null,
+      "output": null
+    },
+    "_note": "no Google key yet; API string probably gemini-4-argon (unverified)"
   },
-  "fake-good": {"provider": "fake", "model": "fake-good", "script": ["reference"], "settings": {}, "price_per_mtok": {"input": 0, "output": 0}},
-  "fake-learner": {"provider": "fake", "model": "fake-learner", "script": ["cov_x10", "always_A", "reference"], "settings": {}, "price_per_mtok": {"input": 0, "output": 0}}
+  "fake-good": {
+    "provider": "fake",
+    "model": "fake-good",
+    "script": [
+      "reference"
+    ],
+    "settings": {},
+    "price_per_mtok": {
+      "input": 0,
+      "output": 0
+    }
+  },
+  "fake-learner": {
+    "provider": "fake",
+    "model": "fake-learner",
+    "script": [
+      "cov_x10",
+      "always_A",
+      "reference"
+    ],
+    "settings": {},
+    "price_per_mtok": {
+      "input": 0,
+      "output": 0
+    }
+  }
 }
