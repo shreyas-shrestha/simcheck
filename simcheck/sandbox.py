@@ -234,7 +234,10 @@ class Budgeted:
         left = self.deadline - time.monotonic()
         if left <= 0:
             raise RunnerError(f"total time limit of {self.seconds:.0f}s for grading exceeded")
-        return self.runner.call(req, timeout=min(timeout or left, left))
+        # A call without its own timeout (make/step) keeps the runner's per-call limit; the total budget only
+        # caps it. Using `timeout or left` here made a hung step() wait for the whole remaining budget.
+        per_call = timeout or getattr(self.runner, "call_timeout", None) or left
+        return self.runner.call(req, timeout=min(per_call, left))
 
     def close(self):
         self.runner.close()

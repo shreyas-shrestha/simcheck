@@ -246,3 +246,40 @@ def test_require_docker_refuses_fallback(monkeypatch):
         assert isinstance(r, SubprocessRunner) and r.isolation.startswith("NONE")
     finally:
         r.close()
+
+
+# ---------------------------------------------------------------- Budgeted keeps the per-call limit (DECISIONS #25)
+
+def _hung_step_seconds(runner_cls):
+    from simcheck.sandbox import Budgeted, RemoteEstimator
+    b = Budgeted(runner_cls(BAD / "hang.py", call_timeout=3), 60)   # as verify() wraps it, with a large total budget
+    try:
+        est = RemoteEstimator(b, SPEC)                               # make: no explicit timeout, like verify/sim
+        t0 = time.perf_counter()
+        with pytest.raises(RunnerError, match="timeout"):
+            est.step(m(0))                                           # step: no explicit timeout either
+        return time.perf_counter() - t0
+    finally:
+        b.close()
+
+
+def test_budgeted_hung_step_fails_at_per_call_limit_subprocess():
+    assert 2.5 < _hung_step_seconds(SubprocessRunner) < 10           # ~3 s, not the 60 s budget
+
+
+@docker
+def test_budgeted_hung_step_fails_at_per_call_limit_docker():
+    assert 2.5 < _hung_step_seconds(DockerRunner) < 10
+
+
+def test_budgeted_total_budget_still_caps_explicit_timeouts():
+    from simcheck.sandbox import Budgeted
+    b = Budgeted(SubprocessRunner(BAD / "hang.py", call_timeout=3), 2)
+    try:
+        b.call({"cmd": "make", "spec": SPEC})
+        t0 = time.perf_counter()
+        with pytest.raises(RunnerError):
+            b.call({"cmd": "step", "m": m(0)}, timeout=900)          # like choose_route's 900 s: budget wins
+        assert time.perf_counter() - t0 < 3
+    finally:
+        b.close()
