@@ -1,0 +1,30 @@
+{
+  "usage": {
+    "input_tokens": 7472,
+    "output_tokens": 4597
+  },
+  "usd": 0.060914,
+  "seconds": 152.01274204199945,
+  "meta": {
+    "modelVersion": "gemini-4-argon",
+    "responseId": "gSruauT1MMvgytMPi4OtwAw",
+    "usageMetadata": {
+      "promptTokenCount": 7472,
+      "candidatesTokenCount": 3951,
+      "totalTokenCount": 12069,
+      "promptTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 7472
+        }
+      ],
+      "candidatesTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 3951
+        }
+      ],
+      "thoughtsTokenCount": 646
+    }
+  }
+}

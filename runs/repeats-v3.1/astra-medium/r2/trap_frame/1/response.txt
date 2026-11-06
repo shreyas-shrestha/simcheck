@@ -1,0 +1,404 @@
+```python
+# solution.py
+import copy
+import math
+
+import gtsam
+import numpy as np
+
+
+def _length_scale(unit):
+    scales = {
+        "m": 1.0, "meter": 1.0, "meters": 1.0,
+        "metre": 1.0, "metres": 1.0,
+        "cm": 0.01, "mm": 0.001, "km": 1000.0,
+    }
+    return scales[str(unit).lower()]
+
+
+def _angle_scale(unit):
+    scales = {
+        "rad": 1.0, "radian": 1.0, "radians": 1.0,
+        "deg": math.pi / 180.0,
+        "degree": math.pi / 180.0, "degrees": math.pi / 180.0,
+    }
+    return scales[str(unit).lower()]
+
+
+def _rotation(theta):
+    c, s = math.cos(theta), math.sin(theta)
+    return np.array([[c, -s], [s, c]], dtype=float)
+
+
+def _wrap(theta):
+    return math.atan2(math.sin(theta), math.cos(theta))
+
+
+class Estimator:
+    """Incremental Pose2 smoothing with exactly known landmark coordinates."""
+
+    def __init__(self, public_spec):
+        self.spec = copy.deepcopy(public_spec)
+        noise = self.spec["sensor_noise_std"]
+
+        # These quantities are already SI, independently of measurement units.
+        self.odom_noise = gtsam.noiseModel.Diagonal.Sigmas(
+            np.asarray(noise["odom"], dtype=float)
+        )
+        self.gps_noise = gtsam.noiseModel.Isotropic.Sigma(
+            2, float(noise["gps"])
+        )
+        self.landmark_noise = gtsam.noiseModel.Diagonal.Sigmas(
+            np.array([noise["bearing"], noise["range"]], dtype=float)
+        )
+        self.prior_noise = gtsam.noiseModel.Diagonal.Variances(
+            np.asarray(
+                self.spec["initial_pose"]["cov_diag_variances"], dtype=float
+            )
+        )
+        self.initial_pose = gtsam.Pose2(
+            *map(float, self.spec["initial_pose"]["mean"])
+        )
+        self.landmarks = {
+            str(key): np.asarray(point, dtype=float)
+            for key, point in self.spec["landmarks"].items()
+        }
+
+        units = self.spec["input_units"]
+        odom_units = units["odom"]
+        if isinstance(odom_units, dict):
+            self.translation_scale = _length_scale(odom_units["position"])
+            self.rotation_scale = _angle_scale(odom_units["angle"])
+        else:
+            self.translation_scale = _length_scale(odom_units)
+            self.rotation_scale = _angle_scale(
+                units.get("dtheta", units.get("angle", "rad"))
+            )
+        self.bearing_scale = _angle_scale(units["bearing"])
+
+        params = gtsam.ISAM2Params()
+        params.setRelinearizeThreshold(1.0e-5)
+        params.relinearizeSkip = 1
+        self.isam = gtsam.ISAM2(params)
+
+        self.previous_step = -1
+        self.previous_pose = self.initial_pose
+        # This is an encoder-frame quantity, not an estimated heading.
+        self.reported_heading_sum = 0.0
+
+        # Retain Python callbacks throughout the lifetime of their factors.
+        self.callbacks = []
+
+    def _gps_factor(self, key, measurement):
+        observed = np.array(
+            [measurement["x"], measurement["y"]], dtype=float
+        )
+
+        def error(factor, values, jacobians):
+            pose = values.atPose2(key)
+            if jacobians is not None:
+                H = np.zeros((2, 3), dtype=float, order="F")
+                H[:, :2] = _rotation(pose.theta())
+                jacobians[0] = H
+            return np.array([pose.x(), pose.y()]) - observed
+
+        self.callbacks.append(error)
+        return gtsam.CustomFactor(self.gps_noise, [key], error)
+
+    def _landmark_factor(self, key, measurement):
+        point = self.landmarks[str(measurement["id"])].copy()
+        bearing = float(measurement["bearing"]) * self.bearing_scale
+        distance = float(measurement["range"])
+
+        def error(factor, values, jacobians):
+            pose = values.atPose2(key)
+            q = _rotation(pose.theta()).T @ (
+                point - np.array([pose.x(), pose.y()])
+            )
+            qx, qy = float(q[0]), float(q[1])
+            r2 = max(qx * qx + qy * qy, np.finfo(float).tiny)
+            r = math.sqrt(r2)
+
+            if jacobians is not None:
+                # Derivatives with respect to Pose2's LOCAL tangent increment.
+                jacobians[0] = np.array(
+                    [
+                        [qy / r2, -qx / r2, -1.0],
+                        [-qx / r, -qy / r, 0.0],
+                    ],
+                    dtype=float,
+                    order="F",
+                )
+            return np.array([
+                _wrap(math.atan2(qy, qx) - bearing),
+                r - distance,
+            ])
+
+        self.callbacks.append(error)
+        return gtsam.CustomFactor(self.landmark_noise, [key], error)
+
+    def step(self, new_measurements):
+        k = int(new_measurements["step"])
+        if k != self.previous_step + 1:
+            raise ValueError("Measurements must arrive consecutively from step 0.")
+
+        graph = gtsam.NonlinearFactorGraph()
+        initial = gtsam.Values()
+        key = gtsam.symbol("x", k)
+
+        if k == 0:
+            graph.add(
+                gtsam.PriorFactorPose2(
+                    key, self.initial_pose, self.prior_noise
+                )
+            )
+            initial.insert(key, self.initial_pose)
+        else:
+            odom = new_measurements["odom"]
+            dx = float(odom["dx"]) * self.translation_scale
+            dy = float(odom["dy"]) * self.translation_scale
+            dtheta = float(odom["dtheta"]) * self.rotation_scale
+
+            frame = self.spec["odom_frame"].lower()
+            if frame == "odom":
+                # Undo the reporting-frame rotation using ONLY past reported
+                # angular increments. The current dtheta is added afterwards.
+                translation = _rotation(-self.reported_heading_sum) @ (
+                    np.array([dx, dy])
+                )
+                dx, dy = map(float, translation)
+            elif frame not in ("body", "robot"):
+                raise ValueError("Unsupported odometry frame: " + frame)
+
+            relative_pose = gtsam.Pose2(dx, dy, dtheta)
+            self.reported_heading_sum = _wrap(
+                self.reported_heading_sum + dtheta
+            )
+
+            graph.add(
+                gtsam.BetweenFactorPose2(
+                    gtsam.symbol("x", k - 1),
+                    key,
+                    relative_pose,
+                    self.odom_noise,
+                )
+            )
+            initial.insert(key, self.previous_pose.compose(relative_pose))
+
+        gps = new_measurements.get("gps")
+        if gps is not None:
+            graph.add(self._gps_factor(key, gps))
+
+        for measurement in new_measurements.get("landmarks", []):
+            graph.add(self._landmark_factor(key, measurement))
+
+        self.isam.update(graph, initial)
+        # Additional nonlinear refinement, without inserting measurements twice.
+        self.isam.update()
+        self.isam.update()
+
+        pose = self.isam.calculateEstimatePose2(key)
+        covariance = np.asarray(self.isam.marginalCovariance(key), dtype=float)
+        covariance = 0.5 * (covariance + covariance.T)
+
+        self.previous_step = k
+        self.previous_pose = pose
+        return (
+            [float(pose.x()), float(pose.y()), _wrap(pose.theta())],
+            covariance.tolist(),
+        )
+
+
+def make_estimator(public_spec):
+    return Estimator(public_spec)
+
+
+def choose_route(public_spec):
+    """
+    Deterministic Gaussian risk approximation, not an empirical success rate.
+
+    Propagate nominal localization covariance along each route, including the
+    GPS outage and expected landmark visibility. Penalize wall encounters and
+    insufficient traversal time; use length to break close probability ties.
+    """
+    spec = public_spec
+    dt = float(spec["dt"])
+    controller = spec["controller"]
+    speed = float(controller["v"])
+    omega_max = float(controller["omega_max"])
+    lookahead = float(controller["lookahead"])
+    radius = float(spec["robot_radius"])
+    tolerance = float(spec["arrival_tolerance"])
+    noise = spec["sensor_noise_std"]
+    actuator = spec["actuator_noise_std"]
+    schedule = spec["gps_schedule"]
+    dropout = schedule["dropout_steps"]
+    landmarks = [
+        np.asarray(p, dtype=float) for p in spec["landmarks"].values()
+    ]
+    walls = [np.asarray(w, dtype=float) for w in spec["walls"]]
+    visibility = float(spec["landmark_visibility"]["max_range"])
+
+    def gps_available(k):
+        if k % int(schedule["rate_steps"]) != 0:
+            return False
+        # The supplied example specifies an inclusive outage interval.
+        if len(dropout) == 2:
+            return not (int(dropout[0]) <= k <= int(dropout[1]))
+        return k not in dropout
+
+    def condition(P, H, R):
+        S = H @ P @ H.T + R
+        K = np.linalg.solve(S, H @ P).T
+        I_KH = np.eye(3) - K @ H
+        result = I_KH @ P @ I_KH.T + K @ R @ K.T
+        return 0.5 * (result + result.T)
+
+    def evaluate(points):
+        points = np.asarray(points, dtype=float)
+        segments = np.diff(points, axis=0)
+        lengths = np.linalg.norm(segments, axis=1)
+        keep = lengths > 0.0
+        segments, lengths = segments[keep], lengths[keep]
+        starts = points[:-1][keep]
+        if len(lengths) == 0:
+            return 1.0, 0.0
+
+        cumulative = np.concatenate(([0.0], np.cumsum(lengths)))
+        total_length = float(cumulative[-1])
+        headings = np.arctan2(segments[:, 1], segments[:, 0])
+        initial_heading = float(spec["initial_pose"]["mean"][2])
+        turn_angles = [
+            abs(_wrap(float(headings[0]) - initial_heading))
+        ]
+        turn_angles.extend(
+            abs(_wrap(float(b - a)))
+            for a, b in zip(headings[:-1], headings[1:])
+        )
+
+        # Conservative allowance for turning in addition to translation.
+        travel_time = total_length / speed + sum(turn_angles) / omega_max
+        available_time = (int(spec["max_steps"]) - 1) * dt
+        timing_std = (
+            float(actuator["v"])
+            * math.sqrt(max(travel_time / dt, 1.0))
+            * dt / speed
+        )
+        time_probability = 0.5 * math.erfc(
+            (travel_time - available_time)
+            / (math.sqrt(2.0) * max(timing_std, np.finfo(float).eps))
+        )
+
+        T = np.eye(3)
+        T[:2, :2] = _rotation(initial_heading)
+        P = T @ np.diag(
+            spec["initial_pose"]["cov_diag_variances"]
+        ) @ T.T
+        Q = np.diag(np.square(np.asarray(noise["odom"], dtype=float)))
+        gps_R = np.eye(2) * float(noise["gps"]) ** 2
+        lm_R = np.diag([noise["bearing"] ** 2, noise["range"] ** 2])
+        gps_H = np.array([[1., 0., 0.], [0., 1., 0.]])
+
+        steps = max(1, int(math.ceil(total_length / (speed * dt))))
+        collision_bound = 0.0
+        previous_position = points[0]
+        for k in range(steps + 1):
+            distance = min(k * speed * dt, total_length)
+            j = min(
+                int(np.searchsorted(cumulative, distance, side="right") - 1),
+                len(lengths) - 1,
+            )
+            position = starts[j] + (
+                (distance - cumulative[j]) / lengths[j]
+            ) * segments[j]
+            heading = float(headings[j])
+
+            if k:
+                delta = position - previous_position
+                F = np.eye(3)
+                F[0, 2], F[1, 2] = -delta[1], delta[0]
+                T = np.eye(3)
+                T[:2, :2] = _rotation(heading)
+                P = F @ P @ F.T + T @ Q @ T.T
+            previous_position = position
+
+            if gps_available(k):
+                P = condition(P, gps_H, gps_R)
+            for landmark in landmarks:
+                d = landmark - position
+                r2 = float(d @ d)
+                if 0.0 < r2 <= visibility ** 2:
+                    r = math.sqrt(r2)
+                    H = np.array([
+                        [d[1] / r2, -d[0] / r2, -1.0],
+                        [-d[0] / r, -d[1] / r, 0.0],
+                    ])
+                    P = condition(P, H, lm_R)
+
+            for wall in walls:
+                a, b = wall[:2], wall[2:]
+                v = b - a
+                vv = float(v @ v)
+                fraction = (
+                    float(np.clip((position - a) @ v / vv, 0.0, 1.0))
+                    if vv else 0.0
+                )
+                separation = position - (a + fraction * v)
+                distance_to_wall = float(np.linalg.norm(separation))
+                if distance_to_wall <= radius:
+                    collision_bound = 1.0
+                    continue
+                normal = separation / distance_to_wall
+                # Add a one-step actuation/tracking allowance.
+                tracking_variance = (
+                    (float(actuator["v"]) * dt) ** 2
+                    + (lookahead * float(actuator["omega"]) * dt) ** 2
+                )
+                variance = float(normal @ P[:2, :2] @ normal)
+                sigma = math.sqrt(variance + tracking_variance)
+                collision_bound += 0.5 * math.erfc(
+                    (distance_to_wall - radius)
+                    / (math.sqrt(2.0) * max(sigma, np.finfo(float).eps))
+                )
+
+        # Conservative isotropic approximation to terminal position uncertainty.
+        terminal_variance = float(np.linalg.eigvalsh(P[:2, :2])[-1])
+        terminal_probability = -math.expm1(
+            -tolerance ** 2
+            / (2.0 * max(terminal_variance, np.finfo(float).eps))
+        )
+        probability = (
+            max(0.0, 1.0 - collision_bound)
+            * time_probability
+            * terminal_probability
+        )
+        return float(np.clip(probability, 0.0, 1.0)), total_length
+
+    scores = {
+        name: evaluate(route) for name, route in spec["routes"].items()
+    }
+    highest_probability = max(value[0] for value in scores.values())
+    close_routes = [
+        name for name, value in scores.items()
+        if value[0] >= highest_probability - 0.01
+    ]
+    chosen = min(close_routes, key=lambda name: (scores[name][1], name))
+    details = "; ".join(
+        "{}: approximate success {:.3f}, length {:.2f} m".format(
+            name, scores[name][0], scores[name][1]
+        )
+        for name in sorted(scores)
+    )
+    return {
+        "route": chosen,
+        "success_prob": scores[chosen][0],
+        "reasoning": (
+            "Selected using nominal Gaussian localization-risk propagation "
+            "with the estimator's sensor models, GPS outage, landmark "
+            "visibility, robot radius, wall clearance, actuation allowance, "
+            "and traversal-time budget. Distance breaks probability ties "
+            "within one percentage point. These are analytical approximations, "
+            "not measured closed-loop success rates. " + details
+        ),
+    }
+```

@@ -1,0 +1,15 @@
+{
+  "task": "standard",
+  "seed_set": "eval",
+  "accepted": false,
+  "reward": 0.0,
+  "layers": {
+    "execution": {
+      "pass": false,
+      "error": "solution.py does not parse: expected '(' at line 7: 'def _ wrap_angle(angle: float) -> float:'"
+    }
+  },
+  "feedback": [
+    "Execution failed: solution.py does not parse: expected '(' at line 7: 'def _ wrap_angle(angle: float) -> float:'"
+  ]
+}

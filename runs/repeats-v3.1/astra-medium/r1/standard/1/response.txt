@@ -1,0 +1,335 @@
+```python
+"""GTSAM pose estimator and geometry/uncertainty-based route selection."""
+
+import math
+import numpy as np
+import gtsam
+
+
+def _length_scale(unit):
+    scales = {
+        "m": 1.0, "metres": 1.0, "meters": 1.0,
+        "cm": 0.01, "mm": 0.001, "km": 1000.0,
+    }
+    if unit not in scales:
+        raise ValueError("Unsupported length unit: " + str(unit))
+    return scales[unit]
+
+
+def _angle_scale(unit):
+    if unit in ("rad", "radians"):
+        return 1.0
+    if unit in ("deg", "degrees"):
+        return math.pi / 180.0
+    raise ValueError("Unsupported angle unit: " + str(unit))
+
+
+def _wrap(angle):
+    return math.atan2(math.sin(angle), math.cos(angle))
+
+
+class Estimator:
+    def __init__(self, public_spec):
+        self.spec = public_spec
+        initial = public_spec["initial_pose"]
+        self.initial_pose = gtsam.Pose2(*map(float, initial["mean"]))
+        self.prior_noise = gtsam.noiseModel.Diagonal.Variances(
+            np.asarray(initial["cov_diag_variances"], dtype=float)
+        )
+
+        noise = public_spec["sensor_noise_std"]
+        # Noise parameters are already SI standard deviations.
+        self.odom_noise = gtsam.noiseModel.Diagonal.Sigmas(
+            np.asarray(noise["odom"], dtype=float)
+        )
+        self.gps_noise = gtsam.noiseModel.Isotropic.Sigma(2, float(noise["gps"]))
+        self.landmark_noise = gtsam.noiseModel.Diagonal.Sigmas(
+            np.array([noise["bearing"], noise["range"]], dtype=float)
+        )
+        self.landmarks = {
+            str(key): np.asarray(point, dtype=float)
+            for key, point in public_spec["landmarks"].items()
+        }
+        units = public_spec["input_units"]
+        self.odom_scale = _length_scale(units["odom"])
+        self.bearing_scale = _angle_scale(units["bearing"])
+
+        params = gtsam.ISAM2Params()
+        params.setRelinearizeThreshold(1e-5)
+        params.relinearizeSkip = 1
+        self.isam = gtsam.ISAM2(params)
+        self.last_step = -1
+        self.last_pose = self.initial_pose
+
+    def _gps_factor(self, key, gps):
+        measured = np.array([gps["x"], gps["y"]], dtype=float)
+
+        def error(factor, values, jacobians):
+            pose = values.atPose2(key)
+            if jacobians is not None:
+                c, s = math.cos(pose.theta()), math.sin(pose.theta())
+                # Pose2 retract applies translations in the pose's local frame.
+                jacobians[0] = np.array(
+                    [[c, -s, 0.0], [s, c, 0.0]], order="F"
+                )
+            return np.array([pose.x(), pose.y()]) - measured
+
+        return gtsam.CustomFactor(self.gps_noise, [key], error)
+
+    def _landmark_factor(self, key, observation):
+        point = self.landmarks[str(observation["id"])]
+        bearing = float(observation["bearing"]) * self.bearing_scale
+        distance = float(observation["range"])
+
+        def error(factor, values, jacobians):
+            pose = values.atPose2(key)
+            dx, dy = point[0] - pose.x(), point[1] - pose.y()
+            c, s = math.cos(pose.theta()), math.sin(pose.theta())
+            qx, qy = c * dx + s * dy, -s * dx + c * dy
+            r2 = max(qx * qx + qy * qy, 1e-20)
+            r = math.sqrt(r2)
+            if jacobians is not None:
+                jacobians[0] = np.array(
+                    [
+                        [qy / r2, -qx / r2, -1.0],
+                        [-qx / r, -qy / r, 0.0],
+                    ],
+                    order="F",
+                )
+            return np.array([
+                _wrap(math.atan2(qy, qx) - bearing),
+                r - distance,
+            ])
+
+        # The landmark is a known constant, not an uncertain graph variable.
+        return gtsam.CustomFactor(self.landmark_noise, [key], error)
+
+    def step(self, new_measurements):
+        k = int(new_measurements["step"])
+        if k != self.last_step + 1:
+            raise ValueError("Measurements must arrive once each, starting at step 0.")
+
+        graph = gtsam.NonlinearFactorGraph()
+        initial_values = gtsam.Values()
+        key = gtsam.symbol("x", k)
+
+        if k == 0:
+            predicted = self.initial_pose
+            graph.add(gtsam.PriorFactorPose2(key, predicted, self.prior_noise))
+        else:
+            odom = new_measurements["odom"]
+            relative = gtsam.Pose2(
+                float(odom["dx"]) * self.odom_scale,
+                float(odom["dy"]) * self.odom_scale,
+                float(odom["dtheta"]),
+            )
+            predicted = self.last_pose.compose(relative)
+            graph.add(gtsam.BetweenFactorPose2(
+                gtsam.symbol("x", k - 1), key, relative, self.odom_noise
+            ))
+
+        initial_values.insert(key, predicted)
+        gps = new_measurements.get("gps")
+        if gps is not None:
+            graph.add(self._gps_factor(key, gps))
+        for observation in new_measurements.get("landmarks", []):
+            graph.add(self._landmark_factor(key, observation))
+
+        self.isam.update(graph, initial_values)
+        # Additional nonlinear iterations also refresh the covariance
+        # linearization after incorporating the new observations.
+        self.isam.update()
+        self.isam.update()
+
+        pose = self.isam.calculateEstimatePose2(key)
+        covariance = np.asarray(self.isam.marginalCovariance(key), dtype=float)
+        covariance = 0.5 * (covariance + covariance.T)
+
+        self.last_pose = pose
+        self.last_step = k
+        return (
+            [float(pose.x()), float(pose.y()), float(pose.theta())],
+            covariance.tolist(),
+        )
+
+
+def make_estimator(public_spec):
+    return Estimator(public_spec)
+
+
+def _point_segment_distance(point, a, b):
+    delta = b - a
+    denominator = float(delta @ delta)
+    fraction = (
+        np.clip(float((point - a) @ delta) / denominator, 0.0, 1.0)
+        if denominator > 0.0 else 0.0
+    )
+    residual = point - (a + fraction * delta)
+    distance = float(np.linalg.norm(residual))
+    normal = residual / distance if distance > 1e-12 else np.array([0.0, 1.0])
+    return distance, normal
+
+
+def choose_route(public_spec):
+    """
+    Approximate route reliability using nominal-path covariance propagation.
+
+    This is a planning approximation, not an asserted Monte Carlo result:
+    it uses the estimator's sensor models and adds a controller tracking
+    allowance before evaluating wall-clearance Gaussian tails.
+    """
+    spec = public_spec
+    dt = float(spec["dt"])
+    controller = spec["controller"]
+    speed = float(controller["v"])
+    lookahead = float(controller["lookahead"])
+    omega_max = float(controller["omega_max"])
+    radius = float(spec["robot_radius"])
+    noise = spec["sensor_noise_std"]
+    actuator = spec["actuator_noise_std"]
+    landmarks = [np.asarray(p, dtype=float) for p in spec["landmarks"].values()]
+    walls = [
+        (np.asarray(w[:2], dtype=float), np.asarray(w[2:], dtype=float))
+        for w in spec["walls"]
+    ]
+    visibility = float(spec["landmark_visibility"]["max_range"])
+    schedule = spec["gps_schedule"]
+    rate = int(schedule["rate_steps"])
+    dropout = schedule["dropout_steps"]
+    budget = (int(spec["max_steps"]) - 1) * dt
+    initial_heading = float(spec["initial_pose"]["mean"][2])
+    odom_covariance = np.diag(np.square(noise["odom"]))
+
+    def gps_available(k):
+        if rate <= 0 or k % rate != 0:
+            return False
+        # The supplied pair denotes an inclusive dropout interval.
+        if len(dropout) == 2:
+            return not (int(dropout[0]) <= k <= int(dropout[1]))
+        return k not in dropout
+
+    def measurement_update(P, H, R):
+        innovation = H @ P @ H.T + R
+        K = np.linalg.solve(innovation, H @ P).T
+        identity_minus_kh = np.eye(3) - K @ H
+        updated = identity_minus_kh @ P @ identity_minus_kh.T + K @ R @ K.T
+        return 0.5 * (updated + updated.T)
+
+    results = []
+    for name, waypoints in spec["routes"].items():
+        points = np.asarray(waypoints, dtype=float)
+        segments = np.diff(points, axis=0)
+        lengths = np.linalg.norm(segments, axis=1)
+        total_length = float(np.sum(lengths))
+        cumulative = np.concatenate(([0.0], np.cumsum(lengths)))
+        headings = np.arctan2(segments[:, 1], segments[:, 0])
+        heading_changes = np.diff(np.concatenate(([initial_heading], headings)))
+        turn_time = sum(abs(_wrap(float(a))) for a in heading_changes) / omega_max
+
+        # Charging full turning time is conservative: pursuit turns while moving.
+        nominal_time = max(
+            0.0, total_length - float(spec["arrival_tolerance"])
+        ) / speed + turn_time
+        time_std = (
+            float(actuator["v"]) * dt
+            * math.sqrt(max(total_length / (speed * dt), 1.0)) / speed
+        )
+        arrival_probability = 0.5 * math.erfc(
+            (nominal_time - budget) / (math.sqrt(2.0) * max(time_std, 1e-12))
+        )
+
+        theta = initial_heading
+        c, s = math.cos(theta), math.sin(theta)
+        T = np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
+        P = T @ np.diag(spec["initial_pose"]["cov_diag_variances"]) @ T.T
+        samples = max(1, int(math.ceil(total_length / (speed * dt))))
+        collision_bound = 0.0
+        minimum_clearance = math.inf
+        visible_count = 0
+        previous_point = points[0]
+
+        for k in range(samples + 1):
+            arc = min(k * speed * dt, total_length)
+            j = min(int(np.searchsorted(cumulative, arc, side="right") - 1),
+                    len(segments) - 1)
+            fraction = (arc - cumulative[j]) / max(lengths[j], 1e-12)
+            point = points[j] + fraction * segments[j]
+            theta = float(headings[j])
+            c, s = math.cos(theta), math.sin(theta)
+
+            if k:
+                motion = point - previous_point
+                F = np.eye(3)
+                F[0, 2], F[1, 2] = -motion[1], motion[0]
+                T = np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
+                P = F @ P @ F.T + T @ odom_covariance @ T.T
+            previous_point = point
+
+            if gps_available(k):
+                P = measurement_update(
+                    P, np.array([[1., 0., 0.], [0., 1., 0.]]),
+                    np.eye(2) * float(noise["gps"]) ** 2,
+                )
+
+            for landmark in landmarks:
+                dx, dy = landmark - point
+                r2 = float(dx * dx + dy * dy)
+                if 1e-16 < r2 <= visibility ** 2:
+                    r = math.sqrt(r2)
+                    H = np.array([
+                        [dy / r2, -dx / r2, -1.0],
+                        [-dx / r, -dy / r, 0.0],
+                    ])
+                    P = measurement_update(
+                        P, H, np.diag(np.square([noise["bearing"], noise["range"]]))
+                    )
+                    visible_count += 1
+
+            # Heading uncertainty can cause pursuit tracking error over a
+            # lookahead distance. Actuation uncertainty is not estimator noise.
+            tracking_variance = (
+                lookahead ** 2 * P[2, 2]
+                + (float(actuator["v"]) * dt) ** 2
+                + (lookahead * float(actuator["omega"]) * dt) ** 2
+            )
+            for a, b in walls:
+                distance, normal = _point_segment_distance(point, a, b)
+                clearance = distance - radius
+                minimum_clearance = min(minimum_clearance, clearance)
+                variance = float(normal @ P[:2, :2] @ normal) + tracking_variance
+                sigma = math.sqrt(max(variance, 1e-20))
+                collision_bound += 0.5 * math.erfc(
+                    clearance / (math.sqrt(2.0) * sigma)
+                )
+
+        probability = arrival_probability * max(0.0, 1.0 - collision_bound)
+        results.append({
+            "route": name,
+            "probability": float(np.clip(probability, 0.0, 1.0)),
+            "length": total_length,
+            "clearance": minimum_clearance,
+            "time": nominal_time,
+            "observations": visible_count / (samples + 1),
+        })
+
+    # Probability is the primary objective; distance resolves numerical ties.
+    best = max(results, key=lambda r: (round(r["probability"], 6), -r["length"]))
+    clearance_text = (
+        f"{best['clearance']:.2f} m"
+        if math.isfinite(best["clearance"]) else "unbounded (no walls)"
+    )
+    return {
+        "route": best["route"],
+        "success_prob": best["probability"],
+        "reasoning": (
+            f"Route {best['route']} has nominal robot-edge wall clearance "
+            f"{clearance_text}, length {best['length']:.2f} m, and conservative "
+            f"travel time {best['time']:.1f} s versus a {budget:.1f} s budget. "
+            f"It averages {best['observations']:.1f} visible landmarks per pose. "
+            "The probability is an approximate nominal-path reliability score "
+            "using the GTSAM estimator's noise models, scheduled GPS outages, "
+            "and pursuit/actuation tracking uncertainty; it is not an empirical "
+            "closed-loop success frequency."
+        ),
+    }
+```

@@ -1,0 +1,504 @@
+{
+  "headline": [
+    {
+      "version": "v3.1",
+      "model": "argon-medium",
+      "task": "prior_needed",
+      "n": 5,
+      "passed": 2,
+      "rate": 0.4,
+      "wilson95": [
+        0.1176182311592533,
+        0.769280067791163
+      ],
+      "mean_reward": 0.82,
+      "failed_layers": {
+        "route": 3
+      },
+      "model_ids": [
+        "gemini-4-argon"
+      ],
+      "commits": [
+        "0aec375b41648aae53c4b1d17f084e4c299c6d42"
+      ],
+      "task_md_versions": [
+        "v3.1"
+      ]
+    },
+    {
+      "version": "v3.1",
+      "model": "argon-medium",
+      "task": "standard",
+      "n": 5,
+      "passed": 3,
+      "rate": 0.6,
+      "wilson95": [
+        0.23071993220883708,
+        0.8823817688407467
+      ],
+      "mean_reward": 0.6,
+      "failed_layers": {
+        "execution": 2
+      },
+      "model_ids": [
+        "gemini-4-argon"
+      ],
+      "commits": [
+        "0aec375b41648aae53c4b1d17f084e4c299c6d42"
+      ],
+      "task_md_versions": [
+        "v3.1"
+      ]
+    },
+    {
+      "version": "v3.1",
+      "model": "argon-medium",
+      "task": "trap_frame",
+      "n": 5,
+      "passed": 2,
+      "rate": 0.4,
+      "wilson95": [
+        0.1176182311592533,
+        0.769280067791163
+      ],
+      "mean_reward": 0.4,
+      "failed_layers": {
+        "execution": 3
+      },
+      "model_ids": [
+        "gemini-4-argon"
+      ],
+      "commits": [
+        "0aec375b41648aae53c4b1d17f084e4c299c6d42"
+      ],
+      "task_md_versions": [
+        "v3.1"
+      ]
+    },
+    {
+      "version": "v3.1",
+      "model": "argon-medium",
+      "task": "trap_units",
+      "n": 4,
+      "passed": 2,
+      "rate": 0.5,
+      "wilson95": [
+        0.15003570882017148,
+        0.8499642911798285
+      ],
+      "mean_reward": 0.5,
+      "failed_layers": {
+        "execution": 2
+      },
+      "model_ids": [
+        "gemini-4-argon"
+      ],
+      "commits": [
+        "0aec375b41648aae53c4b1d17f084e4c299c6d42"
+      ],
+      "task_md_versions": [
+        "v3.1"
+      ]
+    },
+    {
+      "version": "v3.1",
+      "model": "astra-medium",
+      "task": "prior_needed",
+      "n": 1,
+      "passed": 0,
+      "rate": 0.0,
+      "wilson95": [
+        0.0,
+        0.7934567085261071
+      ],
+      "mean_reward": 0.7,
+      "failed_layers": {
+        "route": 1
+      },
+      "model_ids": [
+        "gpt-6-astra"
+      ],
+      "commits": [
+        "0aec375b41648aae53c4b1d17f084e4c299c6d42"
+      ],
+      "task_md_versions": [
+        "v3.1"
+      ]
+    },
+    {
+      "version": "v3.1",
+      "model": "astra-medium",
+      "task": "standard",
+      "n": 3,
+      "passed": 3,
+      "rate": 1.0,
+      "wilson95": [
+        0.43849391955098227,
+        1.0
+      ],
+      "mean_reward": 1.0,
+      "failed_layers": {},
+      "model_ids": [
+        "gpt-6-astra"
+      ],
+      "commits": [
+        "0aec375b41648aae53c4b1d17f084e4c299c6d42"
+      ],
+      "task_md_versions": [
+        "v3.1"
+      ]
+    },
+    {
+      "version": "v3.1",
+      "model": "astra-medium",
+      "task": "trap_frame",
+      "n": 1,
+      "passed": 1,
+      "rate": 1.0,
+      "wilson95": [
+        0.20654329147389294,
+        1.0
+      ],
+      "mean_reward": 1.0,
+      "failed_layers": {},
+      "model_ids": [
+        "gpt-6-astra"
+      ],
+      "commits": [
+        "0aec375b41648aae53c4b1d17f084e4c299c6d42"
+      ],
+      "task_md_versions": [
+        "v3.1"
+      ]
+    },
+    {
+      "version": "v3.1",
+      "model": "astra-medium",
+      "task": "trap_units",
+      "n": 2,
+      "passed": 2,
+      "rate": 1.0,
+      "wilson95": [
+        0.34237195288961925,
+        1.0
+      ],
+      "mean_reward": 1.0,
+      "failed_layers": {},
+      "model_ids": [
+        "gpt-6-astra"
+      ],
+      "commits": [
+        "0aec375b41648aae53c4b1d17f084e4c299c6d42"
+      ],
+      "task_md_versions": [
+        "v3.1"
+      ]
+    },
+    {
+      "version": "v3.2",
+      "model": "argon-medium",
+      "task": "close_routes",
+      "n": 3,
+      "passed": 3,
+      "rate": 1.0,
+      "wilson95": [
+        0.43849391955098227,
+        1.0
+      ],
+      "mean_reward": 1.0,
+      "failed_layers": {},
+      "model_ids": [
+        "gemini-4-argon"
+      ],
+      "commits": [
+        "5237e31cbcaf8853dd6470b43ed832ae7869bba5"
+      ],
+      "task_md_versions": [
+        "v3.2"
+      ]
+    },
+    {
+      "version": "v3.2",
+      "model": "argon-medium",
+      "task": "unknown_noise",
+      "n": 3,
+      "passed": 0,
+      "rate": 0.0,
+      "wilson95": [
+        0.0,
+        0.5615060804490177
+      ],
+      "mean_reward": 0.39999999999999997,
+      "failed_layers": {
+        "execution": 1,
+        "calibration": 2
+      },
+      "model_ids": [
+        "gemini-4-argon"
+      ],
+      "commits": [
+        "5237e31cbcaf8853dd6470b43ed832ae7869bba5"
+      ],
+      "task_md_versions": [
+        "v3.2"
+      ]
+    },
+    {
+      "version": "v3.2",
+      "model": "astra-medium",
+      "task": "close_routes",
+      "n": 1,
+      "passed": 1,
+      "rate": 1.0,
+      "wilson95": [
+        0.20654329147389294,
+        1.0
+      ],
+      "mean_reward": 1.0,
+      "failed_layers": {},
+      "model_ids": [
+        "gpt-6-astra"
+      ],
+      "commits": [
+        "5237e31cbcaf8853dd6470b43ed832ae7869bba5"
+      ],
+      "task_md_versions": [
+        "v3.2"
+      ]
+    }
+  ],
+  "closed_loop": [
+    {
+      "model": "argon-medium",
+      "task": "prior_needed",
+      "attempts_used": 1,
+      "rewards": [
+        1.0
+      ],
+      "fresh_reward": 1.0,
+      "fresh_accepted": true,
+      "copied_feedback_numbers": []
+    },
+    {
+      "model": "argon-medium",
+      "task": "standard",
+      "attempts_used": 2,
+      "rewards": [
+        0.0,
+        1.0
+      ],
+      "fresh_reward": 1.0,
+      "fresh_accepted": true,
+      "copied_feedback_numbers": []
+    },
+    {
+      "model": "argon-medium",
+      "task": "trap_frame",
+      "attempts_used": 2,
+      "rewards": [
+        0.0,
+        1.0
+      ],
+      "fresh_reward": 1.0,
+      "fresh_accepted": true,
+      "copied_feedback_numbers": []
+    },
+    {
+      "model": "argon-medium",
+      "task": "trap_units",
+      "attempts_used": 2,
+      "rewards": [
+        0.0,
+        1.0
+      ],
+      "fresh_reward": 1.0,
+      "fresh_accepted": true,
+      "copied_feedback_numbers": []
+    },
+    {
+      "model": "astra",
+      "task": "prior_needed",
+      "attempts_used": 3,
+      "rewards": [
+        0.7,
+        0.7,
+        1.0
+      ],
+      "fresh_reward": 1.0,
+      "fresh_accepted": true,
+      "copied_feedback_numbers": [
+        "0.505",
+        "0.70"
+      ]
+    },
+    {
+      "model": "astra",
+      "task": "standard",
+      "attempts_used": 1,
+      "rewards": [
+        1.0
+      ],
+      "fresh_reward": 1.0,
+      "fresh_accepted": true,
+      "copied_feedback_numbers": []
+    },
+    {
+      "model": "astra",
+      "task": "trap_frame",
+      "attempts_used": 1,
+      "rewards": [
+        1.0
+      ],
+      "fresh_reward": 1.0,
+      "fresh_accepted": true,
+      "copied_feedback_numbers": []
+    },
+    {
+      "model": "astra-medium",
+      "task": "prior_needed",
+      "attempts_used": 3,
+      "rewards": [
+        0.7,
+        0.7,
+        1.0
+      ],
+      "fresh_reward": 1.0,
+      "fresh_accepted": true,
+      "copied_feedback_numbers": []
+    },
+    {
+      "model": "astra-medium",
+      "task": "standard",
+      "attempts_used": 1,
+      "rewards": [
+        1.0
+      ],
+      "fresh_reward": 1.0,
+      "fresh_accepted": true,
+      "copied_feedback_numbers": []
+    },
+    {
+      "model": "astra-medium",
+      "task": "trap_frame",
+      "attempts_used": 1,
+      "rewards": [
+        1.0
+      ],
+      "fresh_reward": 1.0,
+      "fresh_accepted": true,
+      "copied_feedback_numbers": []
+    },
+    {
+      "model": "astra-medium",
+      "task": "trap_units",
+      "attempts_used": 1,
+      "rewards": [
+        1.0
+      ],
+      "fresh_reward": 1.0,
+      "fresh_accepted": true,
+      "copied_feedback_numbers": []
+    }
+  ],
+  "v3_2": {
+    "unknown_noise": [
+      {
+        "model": "argon-medium",
+        "time": "end_of_dropout",
+        "n_runs": 2,
+        "coverage95": 0.8,
+        "mean_nees": 5.929832424041072,
+        "per_run_coverage95": [
+          0.9666666666666667,
+          0.6333333333333333
+        ],
+        "per_run_mean_nees": [
+          2.8665114717862523,
+          8.993153376295892
+        ]
+      },
+      {
+        "model": "argon-medium",
+        "time": "end_of_trajectory",
+        "n_runs": 2,
+        "coverage95": 0.5833333333333334,
+        "mean_nees": 10.96123180728761,
+        "per_run_coverage95": [
+          0.8,
+          0.36666666666666664
+        ],
+        "per_run_mean_nees": [
+          3.9151777563329313,
+          18.00728585824229
+        ]
+      }
+    ],
+    "close_routes": [
+      {
+        "model": "argon-medium",
+        "chosen": "B",
+        "stated": 1.0,
+        "measured": 1.0,
+        "measured_wilson95": [
+          0.9811539940816791,
+          1.0
+        ],
+        "pass": true,
+        "rates": {
+          "A": 0.94,
+          "B": 1.0
+        }
+      },
+      {
+        "model": "argon-medium",
+        "chosen": "B",
+        "stated": 1.0,
+        "measured": 1.0,
+        "measured_wilson95": [
+          0.9811539940816791,
+          1.0
+        ],
+        "pass": true,
+        "rates": {
+          "A": 0.94,
+          "B": 1.0
+        }
+      },
+      {
+        "model": "argon-medium",
+        "chosen": "B",
+        "stated": 1.0,
+        "measured": 1.0,
+        "measured_wilson95": [
+          0.9811539940816791,
+          1.0
+        ],
+        "pass": true,
+        "rates": {
+          "A": 0.94,
+          "B": 1.0
+        }
+      },
+      {
+        "model": "astra-medium",
+        "chosen": "B",
+        "stated": 1.0,
+        "measured": 1.0,
+        "measured_wilson95": [
+          0.9811539940816791,
+          1.0
+        ],
+        "pass": true,
+        "rates": {
+          "A": 0.94,
+          "B": 1.0
+        }
+      }
+    ]
+  },
+  "cost_usd": {
+    "argon-medium": 3.002,
+    "astra": 1.426,
+    "astra-medium": 4.246
+  }
+}

@@ -1,0 +1,155 @@
+{
+  "task": "unknown_noise",
+  "seed_set": "dev",
+  "isolation": "in-process (trusted code only)",
+  "thresholds_frozen": true,
+  "layers": {
+    "execution": {
+      "pass": true,
+      "determinism_max_pose_diff": 0.0,
+      "determinism_max_rel_cov_diff": 0.0
+    },
+    "structural": {
+      "provided": false,
+      "summary": null,
+      "notes": []
+    },
+    "accuracy": {
+      "pass": true,
+      "ate_m": 0.06492257744748389,
+      "reference_ate_m": 0.06054590136927121,
+      "bound_m": 0.34081885205390683,
+      "dropout_ate_m": 0.052637908405751416,
+      "reference_dropout_ate_m": 0.04716253927790228,
+      "per_scenario_ate_m": [
+        0.04661112531557766,
+        0.08561757772134466,
+        0.09702003066682949,
+        0.04103899128961057,
+        0.044966723956179136,
+        0.04063138508412352,
+        0.09287396802180937,
+        0.07940804493573331,
+        0.06828646512410617,
+        0.05249168981199778,
+        0.05324663924665732,
+        0.04744894340750633,
+        0.06462071925591069,
+        0.04231472441602893,
+        0.06339704107608529,
+        0.11005012953245116,
+        0.06859861879093336,
+        0.05137426228813115,
+        0.03603600403286644,
+        0.09131505088769157,
+        0.09320545892014057,
+        0.04633603315015463,
+        0.050927785851861744,
+        0.0549914839764054,
+        0.1077189388503518,
+        0.08855086392408158,
+        0.05910659240772617,
+        0.041656337811900236,
+        0.08137448136811767,
+        0.04646121230220294
+      ]
+    },
+    "calibration": {
+      "K": 30,
+      "times": {
+        "end_of_dropout": {
+          "pass": true,
+          "covered": 26,
+          "coverage_p_value": 0.06077156130874369,
+          "overconfidence_ok": true,
+          "mean_nees": 4.053583504824557,
+          "nees_lower_bound": 1.973210139189354,
+          "underconfidence_ok": true,
+          "mean_nll": -6.860827965829909,
+          "reference_mean_nll": -7.287506126181056,
+          "nll_bound": -6.287506126181056,
+          "nll_ok": true,
+          "mean_position_cov_trace_m2": 0.001795998367067756,
+          "per_trajectory_coverage_diagnostic": 0.8376726453389033
+        },
+        "end_of_trajectory": {
+          "pass": false,
+          "covered": 24,
+          "coverage_p_value": 0.0032824855950018324,
+          "overconfidence_ok": false,
+          "mean_nees": 6.170369579886812,
+          "nees_lower_bound": 1.973210139189354,
+          "underconfidence_ok": true,
+          "mean_nll": -3.9552045951401564,
+          "reference_mean_nll": -5.104012335820621,
+          "nll_bound": -4.104012335820621,
+          "nll_ok": false,
+          "mean_position_cov_trace_m2": 0.005384591236227196,
+          "per_trajectory_coverage_diagnostic": 0.8376726453389033
+        }
+      },
+      "pass": false,
+      "wording": "calibration inconsistency detected (K=30)"
+    },
+    "route": {
+      "pass": true,
+      "regret_outcome": "pass",
+      "T": 200,
+      "chosen": "B",
+      "stated_success_prob": 1.0,
+      "reasoning": "MC with reference estimator, 40 trials/route: {'A': 0.35, 'B': 1.0}",
+      "routes": {
+        "A": {
+          "success_rate": 0.455,
+          "wilson95": [
+            0.38748099090226035,
+            0.5242151496303886
+          ],
+          "collision_rate": 0.545
+        },
+        "B": {
+          "success_rate": 1.0,
+          "wilson95": [
+            0.9811539940816791,
+            1.0
+          ],
+          "collision_rate": 0.0
+        }
+      },
+      "diff_B_minus_A": 0.5449999999999999,
+      "diff_ci95": [
+        0.475,
+        0.615
+      ],
+      "regret": 0.0,
+      "regret_ci95": [
+        0.0,
+        0.0
+      ],
+      "delta": 0.05,
+      "stated_check": {
+        "pass": true,
+        "stated": 1.0,
+        "estimated": 1.0,
+        "estimated_wilson95": [
+          0.9811539940816791,
+          1.0
+        ],
+        "abs_diff": 0.0,
+        "tolerance": 0.15
+      },
+      "mode": "submitted estimator in the loop",
+      "reference_estimator_rates": {
+        "A": 0.465,
+        "B": 1.0
+      }
+    }
+  },
+  "accepted": false,
+  "reward": 0.6,
+  "feedback": [
+    "Calibration at end of trajectory: overconfident. Only 24/30 runs had NEES <= 7.81 (binomial p = 0.0033 < 0.01). Covariance too small (mean NEES 6.17, expected about 3).",
+    "Calibration at end of trajectory: mean Gaussian NLL -3.96 exceeds reference -5.10 + margin = -4.10."
+  ],
+  "seconds": 322.43165704200146
+}

@@ -1,0 +1,28 @@
+{
+  "model": "argon-medium",
+  "requested_model": "gemini-4-argon",
+  "task": "unknown_noise",
+  "rounds": [
+    {
+      "attempt": 1,
+      "reward": 0.6,
+      "accepted": false,
+      "layers": {
+        "execution": true,
+        "accuracy": true,
+        "calibration": false,
+        "route": true
+      },
+      "feedback_numbers_in_code": []
+    }
+  ],
+  "accepted_first_attempt": false,
+  "feedback_numbers_in_final_code": [],
+  "final_fresh": {
+    "attempt": 1,
+    "reward": null,
+    "accepted": null
+  },
+  "decision_only": false,
+  "max_attempts": 1
+}

@@ -1,0 +1,11 @@
+{
+  "git_commit": "0aec375b41648aae53c4b1d17f084e4c299c6d42",
+  "task_md_version": "v3.1",
+  "model_id_reported": "gpt-6-astra",
+  "requested_model": "gpt-6-astra",
+  "settings": {
+    "max_completion_tokens": 32000,
+    "reasoning_effort": "medium"
+  },
+  "time": 1793993854.7515001
+}
