@@ -93,3 +93,12 @@ def test_unpriced_model_refused_before_any_call(tmp_path, monkeypatch):
     with pytest.raises(RuntimeError):
         harness.run_job("unpriced", "standard", harness.CostTracker(10, tmp_path / "l.jsonl"), echo=lambda *_: None)
     assert called == []  # previously the paid call happened first and pricing failed afterwards
+
+
+def test_prompt_states_conventions_agents_are_graded_on():
+    # Fails if scenarios/ on disk predates the task.md conventions: delete scenarios/ to regenerate.
+    p = harness.build_prompt("standard")
+    assert "not in the world frame" in p                    # covariance frame (calibration depends on it)
+    assert "sampled from the stated prior" in p             # x_0 is not known exactly
+    assert "always in SI units" in p                        # noise std units under unit traps
+    assert "Grading:" in p and "7.81" not in p and "0.25" not in p.split("## spec.json")[0]   # no thresholds
