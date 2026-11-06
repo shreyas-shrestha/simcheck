@@ -2,11 +2,18 @@
 __pycache__/
 .pytest_cache/
 .DS_Store
-# regenerable
-scenarios/
-runs/_reference/
-runs/fake-good/
-runs/fake-learner/
-runs/cost_ledger.jsonl
-# API keys
+
+# secrets: never commit
 .env
+.env.*
+*.key
+*.pem
+secrets*
+
+# regenerated deterministically from seeds
+scenarios/
+
+# run outputs are not code; only the evidence config.json cites is kept
+runs/*
+!runs/milestone1/
+!runs/benchmark/
