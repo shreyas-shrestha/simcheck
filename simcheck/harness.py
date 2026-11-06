@@ -214,14 +214,31 @@ def build_prompt(task, prev_code=None, feedback=None, attempt=1):
 def extract_code(text):
     """Last fenced python block that defines make_estimator; must parse."""
     blocks = re.findall(r"```(?:python|py)?[ \t]*\n(.*?)```", text, flags=re.S)
+    syntax_err = None
     for b in reversed(blocks):
         if "def make_estimator" in b:
             try:
                 ast.parse(b)
                 return b
-            except SyntaxError:
-                continue
-    raise ValueError("no parseable ```python block defining make_estimator found in the response")
+            except SyntaxError as e:
+                syntax_err = syntax_err or e
+    if syntax_err is not None:  # tell the model what to fix, not just that it failed
+        raise ValueError(f"solution.py does not parse: {syntax_err.msg} at line {syntax_err.lineno}: "
+                         f"{(syntax_err.text or '').strip()!r}")
+    raise ValueError("no ```python block defining make_estimator found in the response")
+
+
+def feedback_echo(code, prev_code, feedback):
+    """Numbers quoted in the verifier feedback that first appear as literals in the revised code.
+
+    The feedback reports measured rates (spec v3.1), so a revision can pass the stated-probability check
+    by pasting them in. This flags it; it does not change the grade.
+    """
+    quoted = {m for f in feedback or [] for m in re.findall(r"(?<![\w.])\d+\.\d{2,}", f)}
+    lit = lambda src: set(re.findall(r"(?<![\w.])\d+\.\d+", src or ""))
+    new, old = lit(code), lit(prev_code)
+    known = {float(v) for v in V.CONFIG["thresholds"].values() if isinstance(v, (int, float)) and not isinstance(v, bool)}
+    return sorted(q for q in quoted if q in new and q not in old and float(q) not in known)
 
 
 # ---------------------------------------------------------------- one (model, task) job
@@ -234,7 +251,8 @@ def _write(p, s):
 def _verify(sol_path, task, seed_set, d, decision_only, prefer_docker):
     d.mkdir(parents=True, exist_ok=True)
     log = (d / "log.txt").open("a")
-    runner = make_runner(sol_path, public_dir(task), prefer_docker=prefer_docker)
+    runner = make_runner(sol_path, public_dir(task), prefer_docker=prefer_docker,
+                         call_timeout=V.CONFIG["execution"]["call_timeout_s"])
     try:
         return V.verify(runner, task, seed_set, decision_only=decision_only,
                         progress=lambda s: (log.write(s + "\n"), log.flush()), out_path=d / "report.json")
@@ -243,12 +261,17 @@ def _verify(sol_path, task, seed_set, d, decision_only, prefer_docker):
         log.close()
 
 
-def run_job(model_key, task, cost, decision_only=False, prefer_docker=True, echo=print):
+def _say(msg):
+    print(msg, flush=True)  # logs are redirected to files; flush so progress is visible live
+
+
+def run_job(model_key, task, cost, decision_only=False, prefer_docker=True, echo=_say):
     cfg = MODELS[model_key]
     base = ROOT / "runs" / model_key / task
     rounds, code, rep = [], None, None
     for attempt in range(1, N_ATTEMPTS + 1):
         d = base / str(attempt)
+        prev_code, prev_feedback = code, (rep or {}).get("feedback")
         if (d / "report.json").exists():
             rep = json.loads((d / "report.json").read_text())
             code = (d / "solution.py").read_text() if (d / "solution.py").exists() else code
@@ -281,7 +304,8 @@ def run_job(model_key, task, cost, decision_only=False, prefer_docker=True, echo
                        "feedback": [f"Execution failed: {e}"]}
                 _write(d / "report.json", rep)
         rounds.append({"attempt": attempt, "reward": rep["reward"], "accepted": rep["accepted"],
-                       "layers": {k: v.get("pass") for k, v in rep["layers"].items() if k != "structural"}})
+                       "layers": {k: v.get("pass") for k, v in rep["layers"].items() if k != "structural"},
+                       "feedback_numbers_in_code": feedback_echo(code, prev_code, prev_feedback) if attempt > 1 else []})
         echo(f"{model_key}/{task} attempt {attempt}: reward {rep['reward']:.2f} accepted={rep['accepted']}")
         if rep["accepted"]:
             break
@@ -298,6 +322,8 @@ def run_job(model_key, task, cost, decision_only=False, prefer_docker=True, echo
     final.update(reward=fresh["reward"], accepted=fresh["accepted"])
     echo(f"{model_key}/{task} final on fresh seeds: reward {fresh['reward']:.2f} accepted={fresh['accepted']}")
     summary = {"model": model_key, "requested_model": cfg["model"], "task": task, "rounds": rounds,
+               "accepted_first_attempt": rounds[0]["accepted"],
+               "feedback_numbers_in_final_code": sorted({n for r in rounds for n in r["feedback_numbers_in_code"]}),
                "final_fresh": final, "decision_only": decision_only}
     _write(base / "summary.json", summary)
     return summary
@@ -315,15 +341,20 @@ def main(argv=None):
     cost = CostTracker(a.cost_cap, ROOT / "runs" / "cost_ledger.jsonl")
     for t in a.tasks:  # materialise scenarios and reference caches once, before threads start
         public_dir(t)
+    failed = 0
     with ThreadPoolExecutor(max_workers=a.concurrency) as ex:
         futs = {ex.submit(run_job, a.model, t, cost, a.decision_only, not a.no_docker): t for t in a.tasks}
         for f in as_completed(futs):
             try:
                 f.result()
             except CostCapReached as e:
-                print(f"{a.model}/{futs[f]} stopped: {e}")
-    print(f"total spend ${cost.spent:.2f}")
+                _say(f"{a.model}/{futs[f]} stopped: {e}")
+            except Exception as e:  # e.g. API errors after retries; cached work is kept, rerun resumes
+                failed += 1
+                _say(f"{a.model}/{futs[f]} FAILED: {type(e).__name__}: {str(e)[:500]}")
+    _say(f"total spend ${cost.spent:.2f}")
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

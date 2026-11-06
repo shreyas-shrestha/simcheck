@@ -46,5 +46,11 @@
     "accuracy": 0.2,
     "calibration": 0.4,
     "route": 0.3
+  },
+  "execution": {
+    "call_timeout_s": 30,
+    "choose_route_timeout_s": 900,
+    "total_budget_s": 3600,
+    "note": "per-message, choose_route and whole-grading wall-clock limits; exceeding any is an execution failure"
   }
 }

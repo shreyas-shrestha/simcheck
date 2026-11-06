@@ -43,3 +43,16 @@ def test_fake_sources_are_self_contained():
         src = harness.fake_source(v)
         assert "from simcheck" not in src.split("def choose_route(public_spec):\n    return")[-1]
         compile(src, v, "exec")
+
+
+def test_syntax_error_is_explained():
+    with pytest.raises(ValueError, match=r"does not parse: .* at line 3"):
+        harness.extract_code("```python\ndef make_estimator(s):\n    pass\ndef _ x(): pass\n```")
+
+
+def test_feedback_echo_flags_pasted_measurements_only():
+    fb = ["Route: stated success probability 0.70 differs from the measured rate 0.505 "
+          "(95% CI [0.436, 0.574]) by more than 0.15."]
+    assert harness.feedback_echo("cal = 0.505 / 0.70\ntol = 0.15", "p = 0.70", fb) == ["0.505"]
+    assert harness.feedback_echo("p = 0.5", "p = 0.7", fb) == []
+    assert harness.feedback_echo("x = 0.505", None, None) == []

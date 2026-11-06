@@ -16,7 +16,7 @@ import numpy as np
 from scipy import stats
 
 from simcheck import generator, reference, sim
-from simcheck.sandbox import AgentError, InProcessRunner, RemoteEstimator, RunnerError
+from simcheck.sandbox import AgentError, Budgeted, InProcessRunner, RemoteEstimator, RunnerError
 
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG = json.loads((ROOT / "config.json").read_text())
@@ -308,8 +308,9 @@ def feedback(rep):
 # ---------------------------------------------------------------- top level
 
 def verify(runner, task="standard", seed_set="eval", decision_only=False, progress=print, out_path=None):
-    th = CONFIG["thresholds"]
+    th, ex = CONFIG["thresholds"], CONFIG["execution"]
     K, T = th["calibration_K"], CONFIG["route_trials"]["T"]
+    runner = Budgeted(runner, ex["total_budget_s"])
     spec = task_spec(task)
     t0 = time.perf_counter()
     rep = {"task": task, "seed_set": seed_set, "isolation": getattr(runner, "isolation", "?"),
@@ -327,7 +328,7 @@ def verify(runner, task="standard", seed_set="eval", decision_only=False, progre
         if not np.allclose(again[0], est[0][0], atol=1e-6, rtol=0) or not np.allclose(again[1], est[0][1], rtol=1e-6, atol=0):
             raise ValueError(f"non-deterministic or state leaks across episodes: max pose diff {dp:.3g}, "
                              f"max relative covariance diff {dc:.3g}")
-        choice = runner.call({"cmd": "choose_route", "spec": spec}, timeout=900)["result"]
+        choice = runner.call({"cmd": "choose_route", "spec": spec}, timeout=ex["choose_route_timeout_s"])["result"]
         if choice["route"] not in spec["routes"] or not (0.0 <= choice["success_prob"] <= 1.0):
             raise ValueError(f"choose_route returned invalid {choice}")
         L["execution"] = {"pass": True, "determinism_max_pose_diff": dp, "determinism_max_rel_cov_diff": dc}
