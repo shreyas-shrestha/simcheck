@@ -8,6 +8,7 @@ InProcessRunner   trusted code only (reference, broken variants). Same JSON roun
 """
 import atexit
 import json
+import os
 import queue
 import shutil
 import subprocess
@@ -113,10 +114,12 @@ class DockerRunner(_ProcRunner):
         shutil.copy(solution_path, agent / "solution.py")
         shutil.copy(WORKER, agent / "agent_worker.py")
         argv = ["docker", "run", "--rm", "-i", "--name", self.name,
-                "--network", "none", "--read-only", "--tmpfs", "/tmp",
+                "--network", "none", "--read-only", "--tmpfs", "/tmp:rw,noexec,nosuid,size=64m",
+                "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
                 "--memory", "2g", "--cpus", "2", "--pids-limit", "256", "--user", "65534:65534",
                 "-v", f"{agent}:/agent:ro"]
         if public_dir is not None:
+            check_public_dir(public_dir)
             pub = Path(self.tmp) / "public"
             shutil.copytree(public_dir, pub)
             argv += ["-v", f"{pub}:/public:ro"]
@@ -187,9 +190,27 @@ class InProcessRunner:
         pass
 
 
+def check_public_dir(public_dir):
+    """Refuse to mount a public/ that contains hidden truth, or symlinks (copytree would follow them)."""
+    public_dir = Path(public_dir)
+    bad = [p for p in [public_dir, *public_dir.rglob("*")]
+           if p.is_symlink() or p.name in ("hidden", "truth.json")]
+    if bad:
+        raise RunnerError(f"refusing to mount {public_dir}: hidden data or symlinks inside: {[str(b) for b in bad[:3]]}")
+
+
+def docker_required():
+    return os.environ.get("SIMCHECK_REQUIRE_DOCKER") == "1"
+
+
 def make_runner(solution_path, public_dir=None, prefer_docker=True, call_timeout=30.0):
+    """Docker if available. With SIMCHECK_REQUIRE_DOCKER=1, a missing daemon/image is an error instead of a
+    silent fall back to the non-isolated SubprocessRunner."""
     if prefer_docker and DockerRunner.available():
         return DockerRunner(solution_path, public_dir, call_timeout=call_timeout)
+    if docker_required():
+        raise RunnerError(f"SIMCHECK_REQUIRE_DOCKER=1 but Docker is not usable (daemon down or image {IMAGE} "
+                          f"missing; build with `docker build -t {IMAGE} .`), or --no-docker was passed")
     return SubprocessRunner(solution_path, call_timeout=call_timeout)
 
 
