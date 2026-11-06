@@ -14,15 +14,39 @@
         "route": false
       },
       "feedback_numbers_in_code": []
+    },
+    {
+      "attempt": 2,
+      "reward": 0.7,
+      "accepted": false,
+      "layers": {
+        "execution": true,
+        "accuracy": true,
+        "calibration": true,
+        "route": false
+      },
+      "feedback_numbers_in_code": []
+    },
+    {
+      "attempt": 3,
+      "reward": 0.7,
+      "accepted": false,
+      "layers": {
+        "execution": true,
+        "accuracy": true,
+        "calibration": true,
+        "route": false
+      },
+      "feedback_numbers_in_code": []
     }
   ],
   "accepted_first_attempt": false,
   "feedback_numbers_in_final_code": [],
   "final_fresh": {
-    "attempt": 1,
-    "reward": null,
-    "accepted": null
+    "attempt": 3,
+    "reward": 0.7,
+    "accepted": false
   },
   "decision_only": false,
-  "max_attempts": 1
+  "max_attempts": 3
 }

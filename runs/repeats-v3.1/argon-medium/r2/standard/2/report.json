@@ -1,0 +1,18 @@
+{
+  "task": "standard",
+  "seed_set": "eval",
+  "isolation": "NONE: subprocess fallback (Docker unavailable); not a security boundary",
+  "thresholds_frozen": true,
+  "layers": {
+    "execution": {
+      "pass": false,
+      "error": "AgentError: TypeError: __init__(): incompatible constructor arguments. The following argument types are supported:\n    1. gtsam.gtsam.GPSFactor2(key: typing.SupportsInt | typing.SupportsIndex, gpsIn: typing.Annotated[numpy.typing.ArrayLike, numpy.float64, \"[3, 1]\"], model: gtsam.gtsam.noiseModel.Base)\n\nInvoked with: 8646911284551352320, array([-0.06854817,  0.27129691]), isotropic dim=2 sigma=0.15\n\nTraceback (most recent call last):\n  File \"agent_worker.py\", line 70, in main\n    pose, cov = est.step(req[\"m\"])\n                ^^^^^^^^^^^^^^^^^^\n  File \"solution.py\", line 110, in step\n    gtsam.GPSFactor2(key_k, gtsam.Point2(gx, gy), self.gps_noise)\nTypeError: __init__(): incompatible constructor arguments. The following argument types are supported:\n    1. gtsam.gtsam.GPSFactor2(key: typing.SupportsInt | typing.SupportsIndex, gpsIn: typing.Annotated[numpy.typing.ArrayLike, numpy.float64, \"[3, 1]\"], model: gtsam.gtsam.noiseModel.Base)\n\nInvoked with: 8646911284551352320, array([-0.06854817,  0.27129691]), isotropic dim=2 sigma=0.15\n\n"
+    }
+  },
+  "accepted": false,
+  "reward": 0.0,
+  "feedback": [
+    "Execution failed: AgentError: TypeError: __init__(): incompatible constructor arguments. The following argument types are supported:\n    1. gtsam.gtsam.GPSFactor2(key: typing.SupportsInt | typing.SupportsIndex, gpsIn: typing.Annotated[numpy.typing.ArrayLike, numpy.float64, \"[3, 1]\"], model: gtsam.gtsam.noiseModel.Base)\n\nInvoked with: 8646911284551352320, array([-0.06854817,  0.27129691]), isotropic dim=2 sigma=0.15\n\nTraceback (most recent call last):\n  File \"agent_worker.py\", line 70, in main\n    pose, cov = est.step(req[\"m\"])\n                ^^^^^^^^^^^^^^^^^^\n  File \"solution.py\", line 110, in step\n    gtsam.GPSFactor2(key_k, gtsam.Point2(gx, gy), self.gps_noise)\nTypeError: __init__(): incompatible constructor arguments. The following argument types are supported:\n    1. gtsam.gtsam.GPSFactor2(key: typing.SupportsInt | typing.SupportsIndex, gpsIn: typing.Annotated[numpy.typing.ArrayLike, numpy.float64, \"[3, 1]\"], model: gtsam.gtsam.noiseModel.Base)\n\nInvoked with: 8646911284551352320, array([-0.06854817,  0.27129691]), isotropic dim=2 sigma=0.15\n\n"
+  ],
+  "seconds": 0.2723440420013503
+}

@@ -1,4 +1,94 @@
 {
+  "with_vs_without": [
+    {
+      "version": "v3.1",
+      "model": "argon-medium",
+      "n": 20,
+      "first_try": 10,
+      "first_try_wilson95": [
+        0.2992949144298199,
+        0.7007050855701801
+      ],
+      "after_loop_n": 20,
+      "after_loop": 17,
+      "after_loop_wilson95": [
+        0.6395767041130426,
+        0.9476322080405041
+      ],
+      "accuracy_only_grader_accepts": 13,
+      "wrongly_accepted_by_accuracy_only": 3,
+      "copied_feedback_numbers": [],
+      "fixed_by_feedback": 7,
+      "first_try_pass_lost": 0,
+      "mcnemar_exact_p": 0.015625
+    },
+    {
+      "version": "v3.1",
+      "model": "astra-medium",
+      "n": 7,
+      "first_try": 6,
+      "first_try_wilson95": [
+        0.48686549668097007,
+        0.9743210440510253
+      ],
+      "after_loop_n": 0,
+      "after_loop": 0,
+      "after_loop_wilson95": [
+        0.0,
+        1.0
+      ],
+      "accuracy_only_grader_accepts": 7,
+      "wrongly_accepted_by_accuracy_only": 1,
+      "copied_feedback_numbers": [],
+      "fixed_by_feedback": 0,
+      "first_try_pass_lost": 0,
+      "mcnemar_exact_p": 1.0
+    },
+    {
+      "version": "v3.2",
+      "model": "argon-medium",
+      "n": 6,
+      "first_try": 3,
+      "first_try_wilson95": [
+        0.18761280689940868,
+        0.8123871931005913
+      ],
+      "after_loop_n": 5,
+      "after_loop": 4,
+      "after_loop_wilson95": [
+        0.3755282641185388,
+        0.9637768390302125
+      ],
+      "accuracy_only_grader_accepts": 5,
+      "wrongly_accepted_by_accuracy_only": 2,
+      "copied_feedback_numbers": [],
+      "fixed_by_feedback": 1,
+      "first_try_pass_lost": 0,
+      "mcnemar_exact_p": 1.0
+    },
+    {
+      "version": "v3.2",
+      "model": "astra-medium",
+      "n": 1,
+      "first_try": 1,
+      "first_try_wilson95": [
+        0.20654329147389294,
+        1.0
+      ],
+      "after_loop_n": 0,
+      "after_loop": 0,
+      "after_loop_wilson95": [
+        0.0,
+        1.0
+      ],
+      "accuracy_only_grader_accepts": 1,
+      "wrongly_accepted_by_accuracy_only": 0,
+      "copied_feedback_numbers": [],
+      "fixed_by_feedback": 0,
+      "first_try_pass_lost": 0,
+      "mcnemar_exact_p": 1.0
+    }
+  ],
   "headline": [
     {
       "version": "v3.1",
@@ -79,14 +169,14 @@
       "version": "v3.1",
       "model": "argon-medium",
       "task": "trap_units",
-      "n": 4,
-      "passed": 2,
-      "rate": 0.5,
+      "n": 5,
+      "passed": 3,
+      "rate": 0.6,
       "wilson95": [
-        0.15003570882017148,
-        0.8499642911798285
+        0.23071993220883708,
+        0.8823817688407467
       ],
-      "mean_reward": 0.5,
+      "mean_reward": 0.6,
       "failed_layers": {
         "execution": 2
       },
@@ -497,7 +587,7 @@
     ]
   },
   "cost_usd": {
-    "argon-medium": 3.002,
+    "argon-medium": 4.739,
     "astra": 1.426,
     "astra-medium": 4.246
   }

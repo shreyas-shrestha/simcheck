@@ -1,0 +1,626 @@
+# SimCheck task
+
+Write `solution.py` implementing `make_estimator(public_spec)`, `Estimator.step(new_measurements)` and
+`choose_route(public_spec)` as described in the contract. Use GTSAM. Read `spec.json` for every parameter.
+
+Conventions:
+- `initial_pose.cov_diag_variances` are VARIANCES. Every `*_noise_std` entry is a STANDARD DEVIATION in SI
+  units (metres, radians), regardless of `input_units`.
+- Odometry noise is Pose2 tangent-space noise on the relative pose (x_{k-1} -> x_k), body frame.
+- Landmark bearing is measured relative to the robot heading. GPS gives world-frame x, y.
+- Returned covariance is 3x3 in the local tangent frame of the returned pose (GTSAM convention).
+
+Scenario-specific notes:
+- ODOMETRY FRAME: dx/dy are expressed in the odometry frame, i.e. the body frame at step 0 rotated by the running sum of the reported dtheta values up to (not including) this transition. dtheta is unaffected.
+
+
+## spec.json
+```json
+{
+  "units_out": {
+    "position": "m",
+    "angle": "rad"
+  },
+  "dt": 0.5,
+  "pose_indexing": "N poses x_0..x_{N-1}, N-1 odometry transitions",
+  "initial_pose": {
+    "mean": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "cov_diag_variances": [
+      0.01,
+      0.01,
+      0.001
+    ]
+  },
+  "initial_truth_rule": "true x_0 is sampled from N(mean, diag(cov_diag_variances))",
+  "landmarks": {
+    "0": [
+      1.2,
+      5.5
+    ],
+    "1": [
+      3.12,
+      5.5
+    ],
+    "2": [
+      5.04,
+      5.5
+    ],
+    "3": [
+      6.96,
+      5.5
+    ],
+    "4": [
+      8.88,
+      5.5
+    ],
+    "5": [
+      10.8,
+      5.5
+    ]
+  },
+  "landmark_visibility": {
+    "max_range": 5.0,
+    "rule": "observed every step when within max_range, no occlusion"
+  },
+  "sensor_noise_std": {
+    "odom": [
+      0.02,
+      0.02,
+      0.01
+    ],
+    "range": 0.1,
+    "bearing": 0.03,
+    "gps": 0.15
+  },
+  "actuator_noise_std": {
+    "v": 0.05,
+    "omega": 0.05
+  },
+  "gps_schedule": {
+    "rate_steps": 1,
+    "dropout_steps": [
+      20,
+      35
+    ]
+  },
+  "input_units": {
+    "odom": "m",
+    "bearing": "rad"
+  },
+  "odom_frame": "odom",
+  "controller": {
+    "type": "pure_pursuit",
+    "lookahead": 0.8,
+    "v": 0.5,
+    "omega_max": 1.0
+  },
+  "max_steps": 120,
+  "arrival_tolerance": 0.3,
+  "routes": {
+    "A": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        12.0,
+        0.0
+      ]
+    ],
+    "B": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        2.4000000000000004,
+        3.0
+      ],
+      [
+        9.600000000000001,
+        3.0
+      ],
+      [
+        12.0,
+        0.0
+      ]
+    ]
+  },
+  "robot_radius": 0.2,
+  "walls": [
+    [
+      5.4,
+      0.45,
+      9.0,
+      0.45
+    ],
+    [
+      5.4,
+      -0.45,
+      9.0,
+      -0.45
+    ]
+  ],
+  "success_definition": "reach within arrival_tolerance of route end within max_steps with zero collisions",
+  "objective": "maximize collision-free arrival probability; distance breaks close ties"
+}
+```
+
+## measurements.json (one example episode; your estimator is graded on many others)
+```json
+[{"step": 0, "t": 0.0, "odom": null, "gps": {"x": 0.13663820571183286, "y": 0.1343708992580851}, "landmarks": []}, {"step": 1, "t": 0.5, "odom": {"dx": 0.21640307377794948, "dy": 0.059559631003158, "dtheta": 0.4886025372423295}, "gps": {"x": 0.18842822473705073, "y": 0.31429933136440874}, "landmarks": []}, {"step": 2, "t": 1.0, "odom": {"dx": 0.16560129634181506, "dy": 0.15194275213529734, "dtheta": 0.3766346508481456}, "gps": {"x": 0.42450313153339486, "y": 0.34348407004872905}, "landmarks": []}, {"step": 3, "t": 1.5, "odom": {"dx": 0.127523024804682, "dy": 0.18969342718070892, "dtheta": 0.20184937466053937}, "gps": {"x": 0.6478782800937313, "y": 0.46327206519939385}, "landmarks": []}, {"step": 4, "t": 2.0, "odom": {"dx": 0.07069831940407396, "dy": 0.1727661288748675, "dtheta": 0.06436396310085864}, "gps": {"x": 0.8539767556046849, "y": 0.5813639999964195}, "landmarks": [{"id": "0", "range": 5.110360791131293, "bearing": 0.34209649389938734}]}, {"step": 5, "t": 2.5, "odom": {"dx": 0.09090360857447356, "dy": 0.1938065233743528, "dtheta": -0.047912010269036874}, "gps": {"x": 0.8017303453682859, "y": 0.9252003537596662}, "landmarks": [{"id": "0", "range": 4.9047422872793485, "bearing": 0.40176960010492824}]}, {"step": 6, "t": 3.0, "odom": {"dx": 0.10373798125448314, "dy": 0.24664206315060874, "dtheta": -0.021243083356897816}, "gps": {"x": 0.8319741316746647, "y": 0.9285662469924532}, "landmarks": [{"id": "0", "range": 4.577895257525972, "bearing": 0.5068719521672924}]}, {"step": 7, "t": 3.5, "odom": {"dx": 0.15458559060788735, "dy": 0.24047733952316938, "dtheta": -0.09997408017050695}, "gps": {"x": 1.2439247447543322, "y": 1.1558765796115316}, "landmarks": [{"id": "0", "range": 4.381105622556441, "bearing": 0.595504982368527}, {"id": "1", "range": 4.953023841956641, "bearing": 0.14897369840430708}]}, {"step": 8, "t": 4.0, "odom": {"dx": 0.15356514794473883, "dy": 0.18722182831763653, "dtheta": 0.00832135016571419}, "gps": {"x": 1.2712952301276197, "y": 1.5147646713936274}, "landmarks": [{"id": "0", "range": 3.9860117964248154, "bearing": 0.6233375241586474}, {"id": "1", "range": 4.342048118919046, "bearing": 0.22003084633107806}]}, {"step": 9, "t": 4.5, "odom": {"dx": 0.14931910689163874, "dy": 0.20498323982414215, "dtheta": 0.017503459848943363}, "gps": {"x": 1.5200903829036054, "y": 1.631098645699427}, "landmarks": [{"id": "0", "range": 3.8442782983974713, "bearing": 0.6561909748946464}, {"id": "1", "range": 4.2635580416917565, "bearing": 0.22565500081969248}]}, {"step": 10, "t": 5.0, "odom": {"dx": 0.12784869980943672, "dy": 0.19509239831883268, "dtheta": -0.057166262686729724}, "gps": {"x": 1.287475676147435, "y": 1.58873828797331}, "landmarks": [{"id": "0", "range": 3.7937869142652096, "bearing": 0.6491856220999344}, {"id": "1", "range": 3.9359625105698504, "bearing": 0.30182431337813087}]}, {"step": 11, "t": 5.5, "odom": {"dx": 0.16035304558199626, "dy": 0.19025188436152177, "dtheta": 0.013040317958357382}, "gps": {"x": 1.8574160402927269, "y": 1.8655241196220853}, "landmarks": [{"id": "0", "range": 3.7071354463145023, "bearing": 0.7394520933283504}, {"id": "1", "range": 3.797896694715755, "bearing": 0.20037345441275534}, {"id": "2", "range": 4.954086627710717, "bearing": -0.16786642477152558}]}, {"step": 12, "t": 6.0, "odom": {"dx": 0.10053938076301647, "dy": 0.17807585317003488, "dtheta": 0.007115274937243212}, "gps": {"x": 1.3855240432742, "y": 2.1682395454899512}, "landmarks": [{"id": "0", "range": 3.3180228705621704, "bearing": 0.7842378802829035}, {"id": "1", "range": 3.4320434781898466, "bearing": 0.2630183591323094}, {"id": "2", "range": 4.828626878419957, "bearing": -0.14609693357658093}]}, {"step": 13, "t": 6.5, "odom": {"dx": 0.17750304535496084, "dy": 0.2241500087522514, "dtheta": -0.017047931706411668}, "gps": {"x": 1.8876449824162365, "y": 2.5141537221092434}, "landmarks": [{"id": "0", "range": 3.3148514173190073, "bearing": 0.8321736719507395}, {"id": "1", "range": 3.3812018270123216, "bearing": 0.3121003982656547}, {"id": "2", "range": 4.500672530555434, "bearing": -0.14101336846673052}]}, {"step": 14, "t": 7.0, "odom": {"dx": 0.13319586170836467, "dy": 0.2252717755241286, "dtheta": -0.0014011700279694562}, "gps": {"x": 1.7971128244343983, "y": 2.604654583970136}, "landmarks": [{"id": "0", "range": 3.2218850122479012, "bearing": 1.031543091981355}, {"id": "1", "range": 3.088084115524033, "bearing": 0.3425721621180351}, {"id": "2", "range": 4.13719937811221, "bearing": -0.07154400604028321}]}, {"step": 15, "t": 7.5, "odom": {"dx": 0.1867960440120196, "dy": 0.21333642984499193, "dtheta": -0.144181226142696}, "gps": {"x": 1.9696857480763401, "y": 3.013733489414414}, "landmarks": [{"id": "0", "range": 2.944255716086462, "bearing": 1.1813261477025128}, {"id": "1", "range": 2.8373579470129404, "bearing": 0.5011521670286223}, {"id": "2", "range": 4.015347039552876, "bearing": 0.015973882864817046}]}, {"step": 16, "t": 8.0, "odom": {"dx": 0.2518609681299039, "dy": 0.1688070283848535, "dtheta": -0.28155246550421653}, "gps": {"x": 2.317155673977116, "y": 2.8365419696077567}, "landmarks": [{"id": "0", "range": 2.8536367566825263, "bearing": 1.5521340002577375}, {"id": "1", "range": 2.7963536183670437, "bearing": 0.9213917968853806}, {"id": "2", "range": 3.634489704105418, "bearing": 0.3275802989497252}]}, {"step": 17, "t": 8.5, "odom": {"dx": 0.19983667739939784, "dy": 0.09654477214930608, "dtheta": -0.21204895089148484}, "gps": {"x": 2.626533667347419, "y": 3.0015923970162732}, "landmarks": [{"id": "0", "range": 2.805282482556332, "bearing": 1.795416637098631}, {"id": "1", "range": 2.5934319354676143, "bearing": 1.1278413275496586}, {"id": "2", "range": 3.5992011111613036, "bearing": 0.5317490848606088}, {"id": "3", "range": 4.872875979700818, "bearing": 0.2766464652781875}]}, {"step": 18, "t": 9.0, "odom": {"dx": 0.2745262111324161, "dy": 0.044646989180647564, "dtheta": -0.1874706084565553}, "gps": {"x": 3.3393525092720404, "y": 2.76233562817205}, "landmarks": [{"id": "0", "range": 3.0335967984891554, "bearing": 2.1371934071066736}, {"id": "1", "range": 2.4348043872413134, "bearing": 1.4241911516271788}, {"id": "2", "range": 3.1786498834241925, "bearing": 0.7572251877062941}, {"id": "3", "range": 4.90793767348058, "bearing": 0.5159335545066615}]}, {"step": 19, "t": 9.5, "odom": {"dx": 0.26523510804416106, "dy": 0.015056858701028342, "dtheta": -0.10826510161616905}, "gps": {"x": 3.2751366089272778, "y": 3.3424169327142663}, "landmarks": [{"id": "0", "range": 3.1682900618968413, "bearing": 2.255613796101099}, {"id": "1", "range": 2.5129543750607533, "bearing": 1.619507588145904}, {"id": "2", "range": 2.9477412174702584, "bearing": 0.9428562795519024}, {"id": "3", "range": 4.444315284058338, "bearing": 0.5102239523977858}]}, {"step": 20, "t": 10.0, "odom": {"dx": 0.24720839669666705, "dy": -0.01448218058489104, "dtheta": 0.0005819721211717758}, "gps": null, "landmarks": [{"id": "0", "range": 3.403699827723926, "bearing": 2.2614851120322452}, {"id": "1", "range": 2.4097365098842394, "bearing": 1.671156396593961}, {"id": "2", "range": 2.9670454697335864, "bearing": 0.972448831370115}, {"id": "3", "range": 4.199744791171284, "bearing": 0.6129918577643534}]}, {"step": 21, "t": 10.5, "odom": {"dx": 0.2494648476980876, "dy": -0.000218705426854247, "dtheta": -0.03374805736890688}, "gps": null, "landmarks": [{"id": "0", "range": 3.4044655508389154, "bearing": 2.358655581092113}, {"id": "1", "range": 2.373469432769761, "bearing": 1.8519458226435006}, {"id": "2", "range": 2.8947358383047153, "bearing": 1.1278492364314765}, {"id": "3", "range": 3.99696532637932, "bearing": 0.6763317761343957}]}, {"step": 22, "t": 11.0, "odom": {"dx": 0.20404899351385417, "dy": -0.0064092554607481835, "dtheta": -0.012557332040064177}, "gps": null, "landmarks": [{"id": "0", "range": 3.724851435246815, "bearing": 2.4969803067586973}, {"id": "1", "range": 2.4614116859515756, "bearing": 1.946270161564585}, {"id": "2", "range": 2.590912773874494, "bearing": 1.162772404498038}, {"id": "3", "range": 3.8940834893070897, "bearing": 0.7460020572760757}]}, {"step": 23, "t": 11.5, "odom": {"dx": 0.27736631258393446, "dy": -0.03708256474284502, "dtheta": 0.026121449140689975}, "gps": null, "landmarks": [{"id": "0", "range": 4.076357101910881, "bearing": 2.4104420267764652}, {"id": "1", "range": 2.653646923794362, "bearing": 2.0107709788434036}, {"id": "2", "range": 2.6296514374656237, "bearing": 1.2693210577982619}, {"id": "3", "range": 3.6355871222590577, "bearing": 0.7495961226030445}]}, {"step": 24, "t": 12.0, "odom": {"dx": 0.29330171741334, "dy": -0.03348579661386496, "dtheta": 0.01570479103224044}, "gps": null, "landmarks": [{"id": "0", "range": 4.012201951631167, "bearing": 2.4831623547938433}, {"id": "1", "range": 2.7570632775678816, "bearing": 2.1408966921912915}, {"id": "2", "range": 2.331029848625965, "bearing": 1.3823192995745988}, {"id": "3", "range": 3.362826143585098, "bearing": 0.6984926127353934}]}, {"step": 25, "t": 12.5, "odom": {"dx": 0.24067357386733237, "dy": 0.0037996837992014757, "dtheta": -0.03546465289036823}, "gps": null, "landmarks": [{"id": "0", "range": 4.28978238976477, "bearing": 2.5342622771789447}, {"id": "1", "range": 2.8354161682965735, "bearing": 2.159393191954381}, {"id": "2", "range": 2.451880037431971, "bearing": 1.4952305178858705}, {"id": "3", "range": 3.3129358843751557, "bearing": 0.9027841491192161}, {"id": "4", "range": 4.588363824999136, "bearing": 0.5576119326523261}]}, {"step": 26, "t": 13.0, "odom": {"dx": 0.24745057779145, "dy": -0.0007436315572086176, "dtheta": -0.017375696505819764}, "gps": null, "landmarks": [{"id": "0", "range": 4.438507413363202, "bearing": 2.529819509537562}, {"id": "1", "range": 3.2184623484507418, "bearing": 2.2445522858438522}, {"id": "2", "range": 2.42354902758662, "bearing": 1.5832111320859124}, {"id": "3", "range": 3.2680638057321816, "bearing": 0.9695717885737523}, {"id": "4", "range": 4.685387382354941, "bearing": 0.5696273912399645}]}, {"step": 27, "t": 13.5, "odom": {"dx": 0.2775040591675243, "dy": 0.011114982818531155, "dtheta": 0.044778858765874084}, "gps": null, "landmarks": [{"id": "0", "range": 4.660097273376866, "bearing": 2.604350477023731}, {"id": "1", "range": 3.2782280753107917, "bearing": 2.289443110490523}, {"id": "2", "range": 2.708900918022643, "bearing": 1.6038085772217014}, {"id": "3", "range": 3.1021850040473993, "bearing": 0.9077560282239752}, {"id": "4", "range": 4.434275928740035, "bearing": 0.6076014968929542}]}, {"step": 28, "t": 14.0, "odom": {"dx": 0.28648829461146946, "dy": -0.017528818123035392, "dtheta": -0.04856830749462169}, "gps": null, "landmarks": [{"id": "1", "range": 3.492012442178008, "bearing": 2.37693856333847}, {"id": "2", "range": 2.5984860426816314, "bearing": 1.8163490623244645}, {"id": "3", "range": 2.8680587447996757, "bearing": 1.1522483133507713}, {"id": "4", "range": 4.1954525436592665, "bearing": 0.7463468617462774}]}, {"step": 29, "t": 14.5, "odom": {"dx": 0.22637090141293081, "dy": -0.01422731837920155, "dtheta": 0.026931397131921855}, "gps": null, "landmarks": [{"id": "1", "range": 3.586544064162999, "bearing": 2.414634962408808}, {"id": "2", "range": 2.6087307316176007, "bearing": 1.9364426395934027}, {"id": "3", "range": 2.772772649033576, "bearing": 1.217518101375684}, {"id": "4", "range": 3.935203845414711, "bearing": 0.6706556306215194}]}, {"step": 30, "t": 15.0, "odom": {"dx": 0.221296791163509, "dy": 0.0032535681563327376, "dtheta": 0.036581841640107804}, "gps": null, "landmarks": [{"id": "1", "range": 4.02975057891743, "bearing": 2.400139318694368}, {"id": "2", "range": 2.577469782921034, "bearing": 1.899490600199968}, {"id": "3", "range": 2.745366569737069, "bearing": 1.2034757704583416}, {"id": "4", "range": 3.8727045644553475, "bearing": 0.7146635900658262}]}, {"step": 31, "t": 15.5, "odom": {"dx": 0.24846147025938756, "dy": -0.002354003803076192, "dtheta": 0.0052345823210797416}, "gps": null, "landmarks": [{"id": "1", "range": 4.001254734652165, "bearing": 2.458190296580206}, {"id": "2", "range": 2.9070640876724942, "bearing": 1.9858798640541249}, {"id": "3", "range": 2.6297246769633764, "bearing": 1.177663878550943}, {"id": "4", "range": 3.533831266056678, "bearing": 0.7225691232882872}]}, {"step": 32, "t": 16.0, "odom": {"dx": 0.23427611118223754, "dy": -0.010953670123038597, "dtheta": -0.043711644100941124}, "gps": null, "landmarks": [{"id": "1", "range": 4.252351797642064, "bearing": 2.458999565558379}, {"id": "2", "range": 2.8168545177772297, "bearing": 2.0921159293851446}, {"id": "3", "range": 2.3583120361641337, "bearing": 1.4185184089723917}, {"id": "4", "range": 3.454011706281072, "bearing": 0.824432720103287}, {"id": "5", "range": 5.004344176876963, "bearing": 0.49456061391951867}]}, {"step": 33, "t": 16.5, "odom": {"dx": 0.20504349222084134, "dy": -0.06839372864292945, "dtheta": -0.04652224447199079}, "gps": null, "landmarks": [{"id": "1", "range": 4.411319544221436, "bearing": 2.5529105875431615}, {"id": "2", "range": 2.8260258048158415, "bearing": 2.2415987026934374}, {"id": "3", "range": 2.5526747678518262, "bearing": 1.5270005318681656}, {"id": "4", "range": 3.1115155222080957, "bearing": 0.8807789692211898}, {"id": "5", "range": 4.6532748731179, "bearing": 0.5500853219039139}]}, {"step": 34, "t": 17.0, "odom": {"dx": 0.23896297399831504, "dy": -0.010070365192692133, "dtheta": 0.0199650721723089}, "gps": null, "landmarks": [{"id": "1", "range": 4.702708326551782, "bearing": 2.626946520334153}, {"id": "2", "range": 3.197515822481404, "bearing": 2.277577652412363}, {"id": "3", "range": 2.3669698098503194, "bearing": 1.5498881771879462}, {"id": "4", "range": 3.1750461448047846, "bearing": 0.923833633318309}, {"id": "5", "range": 4.511861372523382, "bearing": 0.6046127942218265}]}, {"step": 35, "t": 17.5, "odom": {"dx": 0.25375558028382394, "dy": -0.04454784221788146, "dtheta": 0.0256032260784932}, "gps": null, "landmarks": [{"id": "1", "range": 4.918995648867486, "bearing": 2.5409125475587313}, {"id": "2", "range": 3.2579670976767545, "bearing": 2.245823386101492}, {"id": "3", "range": 2.510884479687322, "bearing": 1.6479565739681004}, {"id": "4", "range": 2.9802276651980617, "bearing": 0.9926668656401887}, {"id": "5", "range": 4.4688081892424645, "bearing": 0.5686461094734176}]}, {"step": 36, "t": 18.0, "odom": {"dx": 0.32907187601804105, "dy": 0.0042212751818632745, "dtheta": -0.048591477637486585}, "gps": {"x": 7.418973779445276, "y": 2.876404374873817}, "landmarks": [{"id": "2", "range": 3.6920010518193993, "bearing": 2.38917496432113}, {"id": "3", "range": 2.5155449870228024, "bearing": 1.7701498335941652}, {"id": "4", "range": 2.870538132882807, "bearing": 1.0409505656464662}, {"id": "5", "range": 4.165342134402678, "bearing": 0.6531792765577253}]}, {"step": 37, "t": 18.5, "odom": {"dx": 0.23469594182776207, "dy": -0.05048257997534582, "dtheta": 0.02606213499923244}, "gps": {"x": 7.836926418834074, "y": 2.960019588018122}, "landmarks": [{"id": "2", "range": 3.8078279798218895, "bearing": 2.367794731923297}, {"id": "3", "range": 2.385315707122018, "bearing": 1.8487190068193105}, {"id": "4", "range": 2.627675212663021, "bearing": 1.1457363652444688}, {"id": "5", "range": 3.9827923985109774, "bearing": 0.695918451516393}]}, {"step": 38, "t": 19.0, "odom": {"dx": 0.29726145208865856, "dy": -0.03265587580940186, "dtheta": 0.010663099656742371}, "gps": {"x": 8.076287197316518, "y": 2.9064006336435315}, "landmarks": [{"id": "2", "range": 3.8615895722302365, "bearing": 2.440216579643196}, {"id": "3", "range": 2.584196895396904, "bearing": 1.9592462171199907}, {"id": "4", "range": 2.6811334976336902, "bearing": 1.225149994608726}, {"id": "5", "range": 3.7604414094101712, "bearing": 0.6929797315316009}]}, {"step": 39, "t": 19.5, "odom": {"dx": 0.2497364551217093, "dy": 0.02291076262325982, "dtheta": 0.0060400913651236865}, "gps": {"x": 8.368867040143815, "y": 2.96902444426578}, "landmarks": [{"id": "2", "range": 4.077475990057113, "bearing": 2.455993860681124}, {"id": "3", "range": 2.8382203555294474, "bearing": 2.010344284297731}, {"id": "4", "range": 2.4099743499735564, "bearing": 1.3086221739575414}, {"id": "5", "range": 3.50129892894011, "bearing": 0.7498399117111001}]}, {"step": 40, "t": 20.0, "odom": {"dx": 0.23292759336589788, "dy": -0.015441554445335673, "dtheta": 0.02668192618661623}, "gps": {"x": 8.415940990502019, "y": 2.947993722555002}, "landmarks": [{"id": "2", "range": 4.241046035829062, "bearing": 2.4331838485022317}, {"id": "3", "range": 2.8745619717980704, "bearing": 2.0587302820034843}, {"id": "4", "range": 2.428919874699211, "bearing": 1.3755363712296838}, {"id": "5", "range": 3.3789750592736967, "bearing": 0.7408030113337079}]}, {"step": 41, "t": 20.5, "odom": {"dx": 0.2750226941944193, "dy": -0.01969661776156769, "dtheta": -0.04369722573837817}, "gps": {"x": 8.769090554239739, "y": 3.090144857489436}, "landmarks": [{"id": "2", "range": 4.5083150158770495, "bearing": 2.5651823922118844}, {"id": "3", "range": 3.0363185923381106, "bearing": 2.1733895089045454}, {"id": "4", "range": 2.4681423262934183, "bearing": 1.5118659863889103}, {"id": "5", "range": 3.1599870683159828, "bearing": 0.8533798333623364}]}, {"step": 42, "t": 21.0, "odom": {"dx": 0.2649974021863514, "dy": -0.00047029520900871563, "dtheta": -0.0068402157563811575}, "gps": {"x": 8.889036353045322, "y": 2.9942007626063623}, "landmarks": [{"id": "2", "range": 4.713765793617924, "bearing": 2.5744331884432947}, {"id": "3", "range": 3.2611733651702934, "bearing": 2.225297040277688}, {"id": "4", "range": 2.6101625810305644, "bearing": 1.6194543320054686}, {"id": "5", "range": 3.085842518738431, "bearing": 0.944239673253982}]}, {"step": 43, "t": 21.5, "odom": {"dx": 0.23349326405552917, "dy": -0.010152509237429597, "dtheta": -0.16555983225960982}, "gps": {"x": 9.133500501068445, "y": 3.061638640140019}, "landmarks": [{"id": "2", "range": 4.74436439466199, "bearing": 2.7250375979590498}, {"id": "3", "range": 3.2273724956347185, "bearing": 2.507714233725922}, {"id": "4", "range": 2.5114017507080133, "bearing": 1.7965931055436126}, {"id": "5", "range": 3.0373397173619896, "bearing": 1.1476502785105573}]}, {"step": 44, "t": 22.0, "odom": {"dx": 0.2458640372165007, "dy": -0.09610459560378819, "dtheta": -0.1642576682005381}, "gps": {"x": 9.63421480719102, "y": 2.93831241272252}, "landmarks": [{"id": "3", "range": 3.365738446619322, "bearing": 2.6902148549691276}, {"id": "4", "range": 2.7902456312433643, "bearing": 2.1325744508462723}, {"id": "5", "range": 2.8041490237580415, "bearing": 1.3794307347437824}]}, {"step": 45, "t": 22.5, "odom": {"dx": 0.1824971866678868, "dy": -0.14745604339310636, "dtheta": -0.2509842558697724}, "gps": {"x": 9.542238318801305, "y": 2.982440592138275}, "landmarks": [{"id": "3", "range": 3.811793842044309, "bearing": 2.9434662967506835}, {"id": "4", "range": 2.8358544637526313, "bearing": 2.4367469034785696}, {"id": "5", "range": 3.121395550188959, "bearing": 1.7254414708041423}]}, {"step": 46, "t": 23.0, "odom": {"dx": 0.2168762381992611, "dy": -0.1778260847028507, "dtheta": -0.09185223248575022}, "gps": {"x": 9.871892601691192, "y": 2.812398123734166}, "landmarks": [{"id": "3", "range": 3.9750233042650485, "bearing": 3.0583568107099053}, {"id": "4", "range": 2.947047128358335, "bearing": 2.6002008845914224}, {"id": "5", "range": 2.9948213422662477, "bearing": 1.8942974848088916}]}, {"step": 47, "t": 23.5, "odom": {"dx": 0.15185132736157445, "dy": -0.16646310535700246, "dtheta": -0.14708765237079674}, "gps": {"x": 10.088183336975103, "y": 2.5424346270421734}, "landmarks": [{"id": "3", "range": 4.187847256258201, "bearing": -3.1227642251070384}, {"id": "4", "range": 3.21598864316744, "bearing": 2.7253990620083997}, {"id": "5", "range": 3.141050525894102, "bearing": 2.174955950808889}]}, {"step": 48, "t": 24.0, "odom": {"dx": 0.10808550714377939, "dy": -0.14938621894919596, "dtheta": -0.0396207893848193}, "gps": {"x": 10.199344965869184, "y": 2.143824982868909}, "landmarks": [{"id": "3", "range": 4.5293732888562355, "bearing": -3.0782604473726187}, {"id": "4", "range": 3.587135000773415, "bearing": 2.793853772184848}, {"id": "5", "range": 3.303975274882377, "bearing": 2.2044557551845845}]}, {"step": 49, "t": 24.5, "odom": {"dx": 0.1574060508747526, "dy": -0.18200578698475028, "dtheta": -0.10080461597521118}, "gps": {"x": 10.065970954624072, "y": 2.1289603073509795}, "landmarks": [{"id": "3", "range": 4.80930668376744, "bearing": -2.972110815448997}, {"id": "4", "range": 3.672778704132146, "bearing": 2.9250186093264308}, {"id": "5", "range": 3.081025638609965, "bearing": 2.4046275857140067}]}, {"step": 50, "t": 25.0, "odom": {"dx": 0.09471193262772662, "dy": -0.2320085283088081, "dtheta": -0.04192465441849101}, "gps": {"x": 10.608647836787453, "y": 2.00923358243315}, "landmarks": [{"id": "3", "range": 5.02905614458022, "bearing": -3.0027453605595045}, {"id": "4", "range": 3.8604552452666763, "bearing": 2.94684710191839}, {"id": "5", "range": 3.6398637698526346, "bearing": 2.4287399299614805}]}, {"step": 51, "t": 25.5, "odom": {"dx": 0.12083465833544116, "dy": -0.24689683495250958, "dtheta": 0.033392646933696334}, "gps": {"x": 10.750740791169342, "y": 1.62484307371623}, "landmarks": [{"id": "4", "range": 4.12659131809949, "bearing": 2.927168917571594}, {"id": "5", "range": 3.8120023027133962, "bearing": 2.4504653128619402}]}, {"step": 52, "t": 26.0, "odom": {"dx": 0.12321534476767063, "dy": -0.24029315666801293, "dtheta": 0.010412469656588888}, "gps": {"x": 10.639474033123218, "y": 1.5070431717656736}, "landmarks": [{"id": "4", "range": 4.298540038871713, "bearing": 2.9946854131691323}, {"id": "5", "range": 3.84028775292027, "bearing": 2.458942227278869}]}, {"step": 53, "t": 26.5, "odom": {"dx": 0.10860354527257107, "dy": -0.1641430037017154, "dtheta": -0.006785628769774892}, "gps": {"x": 11.0694419470034, "y": 1.4073385604751454}, "landmarks": [{"id": "4", "range": 4.480094787030317, "bearing": 2.9061812654786507}, {"id": "5", "range": 4.135559882832695, "bearing": 2.583669982963224}]}, {"step": 54, "t": 27.0, "odom": {"dx": 0.13397067186312886, "dy": -0.2012999511470036, "dtheta": 0.05548826342641534}, "gps": {"x": 11.247930704268386, "y": 1.1517699494615885}, "landmarks": [{"id": "4", "range": 4.897415200692686, "bearing": 2.9692933443242255}, {"id": "5", "range": 4.504524782464131, "bearing": 2.511629024826199}]}, {"step": 55, "t": 27.5, "odom": {"dx": 0.16340757317179355, "dy": -0.2034765340858415, "dtheta": 0.029172913801995205}, "gps": {"x": 11.013036076897068, "y": 0.7645526994532038}, "landmarks": [{"id": "5", "range": 4.656415969233047, "bearing": 2.5484657564513613}]}, {"step": 56, "t": 28.0, "odom": {"dx": 0.16966341312234554, "dy": -0.1992763209307918, "dtheta": -0.06299638591540903}, "gps": {"x": 11.353583395999435, "y": 0.9573460635464699}, "landmarks": [{"id": "5", "range": 4.741677816340486, "bearing": 2.57671518082344}]}, {"step": 57, "t": 28.5, "odom": {"dx": 0.12388988105350145, "dy": -0.2168429011067896, "dtheta": -0.030646700245097518}, "gps": {"x": 11.528637900949828, "y": 0.520098272391447}, "landmarks": []}, {"step": 58, "t": 29.0, "odom": {"dx": 0.09980753530146498, "dy": -0.21894585648109077, "dtheta": 0.01912706586210473}, "gps": {"x": 11.714736026513094, "y": 0.26850000431198306}, "landmarks": []}, {"step": 59, "t": 29.5, "odom": {"dx": 0.1304413524006522, "dy": -0.20698434051576364, "dtheta": 0.02511416208358789}, "gps": {"x": 11.806025655092684, "y": 0.16464216161815443}, "landmarks": []}]
+```
+
+## Contract
+Implement solution.py with exactly this interface:
+
+def make_estimator(public_spec):
+    """Return a NEW estimator object. One object per episode; the verifier creates a fresh one for every
+    trial, so no state may persist across episodes (no module-level caches or globals)."""
+
+class Estimator:
+    def step(self, new_measurements):
+        """new_measurements is a dict, always containing "step" (int) and "t" (seconds):
+          step 0:  {"step": 0, "t": 0.0, "odom": None, "gps": {"x","y"} or None, "landmarks": [...]}
+          step k:  {"step": k, "t": k*dt, "odom": {"dx","dy","dtheta"} for transition k-1 -> k,
+                    "gps": {"x","y"} or None, "landmarks": [{"id","range","bearing"}, ...] (possibly empty)}
+        Returns (pose [x, y, theta], covariance 3x3 in local tangent frame of pose)."""
+
+def choose_route(public_spec):
+    """Returns {"route": "A" or "B", "success_prob": float, "reasoning": str}."""
+
+Incremental (e.g. iSAM2) or batch inside step() are both allowed. Optional:
+build_graph(measurements, public_spec) -> (gtsam.NonlinearFactorGraph, gtsam.Values) for diagnostics.
+Same measurements fed to two fresh estimators must give identical outputs (deterministic).
+The robot is driven by a pure-pursuit controller that uses YOUR estimator's pose, so choose_route should
+reflect the collision-free arrival probability with your own estimator in the loop.
+Available in the sandbox: Python 3.12, numpy, scipy, gtsam. No network, no files except what you write.
+Answer with ONE ```python fenced block containing the complete solution.py.
+
+## Revision 1 of 2: your previous solution.py
+```python
+import math
+import numpy as np
+import gtsam
+from gtsam.symbol_shorthand import X, L
+
+
+def _unit_scale(unit_name):
+    if unit_name in ("m", "rad", None):
+        return 1.0
+    if unit_name == "cm":
+        return 0.01
+    if unit_name == "mm":
+        return 0.001
+    if unit_name == "deg":
+        return math.pi / 180.0
+    return 1.0
+
+
+class Estimator:
+    def __init__(self, public_spec):
+        self.spec = public_spec
+        self.landmarks = {
+            str(k): (float(v[0]), float(v[1]))
+            for k, v in public_spec.get("landmarks", {}).items()
+        }
+
+        input_units = public_spec.get("input_units", {})
+        self.odom_scale = _unit_scale(input_units.get("odom", "m"))
+        self.bearing_scale = _unit_scale(input_units.get("bearing", "rad"))
+        self.odom_frame = public_spec.get("odom_frame", "body")
+
+        init_pose = public_spec["initial_pose"]
+        self.init_mean = [float(x) for x in init_pose["mean"]]
+        self.init_vars = [float(x) for x in init_pose["cov_diag_variances"]]
+
+        sn = public_spec["sensor_noise_std"]
+        odom_std = [float(x) for x in sn["odom"]]
+        gps_std = float(sn["gps"])
+        bearing_std = float(sn["bearing"])
+        range_std = float(sn["range"])
+
+        self.prior_noise = gtsam.noiseModel.Diagonal.Variances(
+            np.array(self.init_vars, dtype=float)
+        )
+        self.odom_noise = gtsam.noiseModel.Diagonal.Sigmas(
+            np.array(odom_std, dtype=float)
+        )
+        self.gps_noise = gtsam.noiseModel.Isotropic.Sigma(2, gps_std)
+        self.br_noise = gtsam.noiseModel.Diagonal.Sigmas(
+            np.array([bearing_std, range_std], dtype=float)
+        )
+        self.lm_prior_noise = gtsam.noiseModel.Isotropic.Sigma(2, 1e-6)
+
+        self.graph = gtsam.NonlinearFactorGraph()
+        self.initial_estimates = gtsam.Values()
+        self.current_estimates = gtsam.Values()
+
+        self.running_dtheta = 0.0
+        self.added_landmarks = set()
+        self.last_pose = gtsam.Pose2(
+            self.init_mean[0], self.init_mean[1], self.init_mean[2]
+        )
+
+    def _transform_odom(self, dx_raw, dy_raw, dtheta_raw):
+        dx = float(dx_raw) * self.odom_scale
+        dy = float(dy_raw) * self.odom_scale
+        dtheta = float(dtheta_raw) * self.bearing_scale
+
+        if self.odom_frame == "odom":
+            c = math.cos(self.running_dtheta)
+            s = math.sin(self.running_dtheta)
+            dx_body = c * dx + s * dy
+            dy_body = -s * dx + c * dy
+            self.running_dtheta += dtheta
+            return dx_body, dy_body, dtheta
+        elif self.odom_frame == "world":
+            theta_prev = self.last_pose.theta()
+            c = math.cos(theta_prev)
+            s = math.sin(theta_prev)
+            dx_body = c * dx + s * dy
+            dy_body = -s * dx + c * dy
+            self.running_dtheta += dtheta
+            return dx_body, dy_body, dtheta
+        else:
+            self.running_dtheta += dtheta
+            return dx, dy, dtheta
+
+    def step(self, new_measurements):
+        k = int(new_measurements["step"])
+        key_k = X(k)
+
+        if k == 0:
+            p0 = gtsam.Pose2(
+                self.init_mean[0], self.init_mean[1], self.init_mean[2]
+            )
+            self.graph.add(gtsam.PriorFactorPose2(key_k, p0, self.prior_noise))
+            self.initial_estimates.insert(key_k, p0)
+            self.last_pose = p0
+        else:
+            odom = new_measurements.get("odom")
+            if odom is not None:
+                dx, dy, dtheta = self._transform_odom(
+                    odom["dx"], odom["dy"], odom["dtheta"]
+                )
+            else:
+                dx, dy, dtheta = 0.0, 0.0, 0.0
+
+            rel_pose = gtsam.Pose2(dx, dy, dtheta)
+            self.graph.add(
+                gtsam.BetweenFactorPose2(
+                    X(k - 1), key_k, rel_pose, self.odom_noise
+                )
+            )
+            pred_pose = self.last_pose.compose(rel_pose)
+            self.initial_estimates.insert(key_k, pred_pose)
+            self.last_pose = pred_pose
+
+        gps = new_measurements.get("gps")
+        if gps is not None:
+            gx = float(gps["x"]) * self.odom_scale
+            gy = float(gps["y"]) * self.odom_scale
+            self.graph.add(
+                gtsam.GPSFactor2(key_k, gtsam.Point2(gx, gy), self.gps_noise)
+            )
+
+        lms = new_measurements.get("landmarks") or []
+        for lm in lms:
+            lm_id = str(lm["id"])
+            if lm_id not in self.landmarks:
+                continue
+            lid_int = int(lm_id)
+            l_key = L(lid_int)
+            if lid_int not in self.added_landmarks:
+                lx, ly = self.landmarks[lm_id]
+                pt = gtsam.Point2(lx, ly)
+                self.graph.add(
+                    gtsam.PriorFactorPoint2(l_key, pt, self.lm_prior_noise)
+                )
+                self.initial_estimates.insert(l_key, pt)
+                self.added_landmarks.add(lid_int)
+
+            r = float(lm["range"]) * self.odom_scale
+            b = float(lm["bearing"]) * self.bearing_scale
+            self.graph.add(
+                gtsam.BearingRangeFactor2D(
+                    key_k, l_key, gtsam.Rot2(b), r, self.br_noise
+                )
+            )
+
+        params = gtsam.LevenbergMarquardtParams()
+        optimizer = gtsam.LevenbergMarquardtOptimizer(
+            self.graph, self.initial_estimates, params
+        )
+        self.current_estimates = optimizer.optimize()
+        self.initial_estimates = self.current_estimates
+
+        est_pose = self.current_estimates.atPose2(key_k)
+        self.last_pose = est_pose
+
+        try:
+            marginals = gtsam.Marginals(self.graph, self.current_estimates)
+            cov = marginals.marginalCovariance(key_k)
+        except Exception:
+            cov = np.diag(self.init_vars)
+
+        pose_out = [
+            float(est_pose.x()),
+            float(est_pose.y()),
+            float(est_pose.theta()),
+        ]
+        return pose_out, np.array(cov, dtype=float)
+
+
+def make_estimator(public_spec):
+    return Estimator(public_spec)
+
+
+def build_graph(measurements, public_spec):
+    est = make_estimator(public_spec)
+    for m in measurements:
+        est.step(m)
+    return est.graph, est.current_estimates
+
+
+def _point_to_segment_dist(px, py, x1, y1, x2, y2):
+    dx = x2 - x1
+    dy = y2 - y1
+    l2 = dx * dx + dy * dy
+    if l2 == 0.0:
+        return math.hypot(px - x1, py - y1)
+    t = max(0.0, min(1.0, ((px - x1) * dx + (py - y1) * dy) / l2))
+    proj_x = x1 + t * dx
+    proj_y = y1 + t * dy
+    return math.hypot(px - proj_x, py - proj_y)
+
+
+def _check_collision(x, y, walls, radius):
+    for w in walls:
+        if _point_to_segment_dist(x, y, w[0], w[1], w[2], w[3]) <= radius:
+            return True
+    return False
+
+
+def _pure_pursuit_control(pose, waypoints, seg_idx, lookahead, v_cmd, omega_max):
+    x, y, theta = pose
+    n_segs = len(waypoints) - 1
+
+    while seg_idx < n_segs - 1:
+        wx, wy = waypoints[seg_idx + 1]
+        if math.hypot(wx - x, wy - y) < lookahead:
+            seg_idx += 1
+        else:
+            break
+
+    target_pt = waypoints[-1]
+    for i in range(seg_idx, n_segs):
+        p1 = np.array(waypoints[i], dtype=float)
+        p2 = np.array(waypoints[i + 1], dtype=float)
+        d = p2 - p1
+        f = p1 - np.array([x, y], dtype=float)
+        a = float(np.dot(d, d))
+        b = 2.0 * float(np.dot(f, d))
+        c = float(np.dot(f, f)) - lookahead * lookahead
+        disc = b * b - 4.0 * a * c
+        if disc >= 0.0 and a > 1e-12:
+            sqrt_disc = math.sqrt(disc)
+            t1 = (-b - sqrt_disc) / (2.0 * a)
+            t2 = (-b + sqrt_disc) / (2.0 * a)
+            valid_t = [t for t in (t1, t2) if 0.0 <= t <= 1.0]
+            if valid_t:
+                t_best = max(valid_t)
+                target_pt = p1 + t_best * d
+                seg_idx = i
+                break
+        if np.linalg.norm(p2 - np.array([x, y])) >= lookahead:
+            target_pt = p2
+            seg_idx = i
+            break
+
+    dx = target_pt[0] - x
+    dy = target_pt[1] - y
+    alpha = math.atan2(dy, dx) - theta
+    alpha = (alpha + math.pi) % (2.0 * math.pi) - math.pi
+    dist = math.hypot(dx, dy)
+    ld = max(dist, lookahead, 1e-3)
+    omega = 2.0 * v_cmd * math.sin(alpha) / ld
+    omega = max(-omega_max, min(omega_max, omega))
+    return v_cmd, omega, seg_idx
+
+
+def _simulate_route(route_waypoints, public_spec, n_trials=25, seed=42):
+    rng = np.random.default_rng(seed)
+    dt = float(public_spec.get("dt", 0.5))
+    max_steps = int(public_spec.get("max_steps", 120))
+    arr_tol = float(public_spec.get("arrival_tolerance", 0.3))
+    radius = float(public_spec.get("robot_radius", 0.2))
+    walls = public_spec.get("walls", [])
+    landmarks = {
+        str(k): (float(v[0]), float(v[1]))
+        for k, v in public_spec.get("landmarks", {}).items()
+    }
+    max_range = float(
+        public_spec.get("landmark_visibility", {}).get("max_range", 5.0)
+    )
+
+    init_mean = public_spec["initial_pose"]["mean"]
+    init_vars = public_spec["initial_pose"]["cov_diag_variances"]
+    init_stds = [math.sqrt(v) for v in init_vars]
+
+    sn = public_spec["sensor_noise_std"]
+    odom_stds = [float(x) for x in sn["odom"]]
+    range_std = float(sn["range"])
+    bearing_std = float(sn["bearing"])
+    gps_std = float(sn["gps"])
+
+    act_stds = public_spec.get("actuator_noise_std", {"v": 0.0, "omega": 0.0})
+    v_std = float(act_stds.get("v", 0.0))
+    omega_std = float(act_stds.get("omega", 0.0))
+
+    gps_sched = public_spec.get("gps_schedule", {})
+    gps_rate = int(gps_sched.get("rate_steps", 1))
+    dropout = gps_sched.get("dropout_steps", [])
+    has_dropout = len(dropout) == 2
+
+    ctrl = public_spec["controller"]
+    lookahead = float(ctrl["lookahead"])
+    v_cmd = float(ctrl["v"])
+    omega_max = float(ctrl["omega_max"])
+
+    odom_frame = public_spec.get("odom_frame", "body")
+    goal = route_waypoints[-1]
+
+    successes = 0
+    for _ in range(n_trials):
+        est = make_estimator(public_spec)
+        true_x = float(rng.normal(init_mean[0], init_stds[0]))
+        true_y = float(rng.normal(init_mean[1], init_stds[1]))
+        true_theta = float(rng.normal(init_mean[2], init_stds[2]))
+
+        running_odom_theta = 0.0
+        seg_idx = 0
+        collided = False
+        arrived = False
+
+        for k in range(max_steps):
+            if k == 0:
+                odom_meas = None
+            else:
+                v_actual = v_cmd + float(rng.normal(0.0, v_std))
+                omega_actual = omega_cmd + float(rng.normal(0.0, omega_std))
+
+                prev_pose = gtsam.Pose2(true_x, true_y, true_theta)
+                if abs(omega_actual) < 1e-6:
+                    dx_true = v_actual * dt
+                    dy_true = 0.0
+                    dtheta_true = 0.0
+                else:
+                    dx_true = v_actual * dt
+                    dy_true = 0.0
+                    dtheta_true = omega_actual * dt
+
+                rel_true = gtsam.Pose2(dx_true, dy_true, dtheta_true)
+                new_pose = prev_pose.compose(rel_true)
+                true_x, true_y, true_theta = (
+                    new_pose.x(),
+                    new_pose.y(),
+                    new_pose.theta(),
+                )
+
+                noise_tangent = rng.normal(0.0, odom_stds)
+                noisy_rel = rel_true.compose(
+                    gtsam.Pose2.Expmap(noise_tangent)
+                )
+                dx_b, dy_b, dth = (
+                    noisy_rel.x(),
+                    noisy_rel.y(),
+                    noisy_rel.theta(),
+                )
+
+                if odom_frame == "odom":
+                    c = math.cos(running_odom_theta)
+                    s = math.sin(running_odom_theta)
+                    dx_rep = c * dx_b - s * dy_b
+                    dy_rep = s * dx_b + c * dy_b
+                    running_odom_theta += dth
+                else:
+                    dx_rep, dy_rep = dx_b, dy_b
+                    running_odom_theta += dth
+
+                odom_meas = {"dx": dx_rep, "dy": dy_rep, "dtheta": dth}
+
+            if _check_collision(true_x, true_y, walls, radius):
+                collided = True
+                break
+
+            if math.hypot(true_x - goal[0], true_y - goal[1]) <= arr_tol:
+                arrived = True
+                break
+
+            in_dropout = has_dropout and (dropout[0] <= k <= dropout[1])
+            if (k % gps_rate == 0) and not in_dropout:
+                gps_meas = {
+                    "x": true_x + float(rng.normal(0.0, gps_std)),
+                    "y": true_y + float(rng.normal(0.0, gps_std)),
+                }
+            else:
+                gps_meas = None
+
+            lm_meas = []
+            for lid, (lx, ly) in landmarks.items():
+                dist = math.hypot(lx - true_x, ly - true_y)
+                if dist <= max_range:
+                    true_b = math.atan2(ly - true_y, lx - true_x) - true_theta
+                    true_b = (true_b + math.pi) % (2.0 * math.pi) - math.pi
+                    r_m = dist + float(rng.normal(0.0, range_std))
+                    b_m = true_b + float(rng.normal(0.0, bearing_std))
+                    lm_meas.append({"id": lid, "range": r_m, "bearing": b_m})
+
+            meas = {
+                "step": k,
+                "t": k * dt,
+                "odom": odom_meas,
+                "gps": gps_meas,
+                "landmarks": lm_meas,
+            }
+            est_pose, _ = est.step(meas)
+            _, omega_cmd, seg_idx = _pure_pursuit_control(
+                est_pose, route_waypoints, seg_idx, lookahead, v_cmd, omega_max
+            )
+
+        if arrived and not collided:
+            successes += 1
+
+    return successes / float(n_trials)
+
+
+def choose_route(public_spec):
+    routes = public_spec.get("routes", {})
+    probs = {}
+    for r_name, r_wps in routes.items():
+        probs[r_name] = _simulate_route(r_wps, public_spec, n_trials=25, seed=42)
+
+    best_route = max(probs, key=lambda k: probs[k])
+    best_prob = float(probs[best_route])
+
+    reasoning = (
+        f"Route {best_route} selected with estimated collision-free arrival probability "
+        f"{best_prob:.2f} (vs { {k: round(v, 2) for k, v in probs.items()} }). "
+        f"Route B detours to y=3.0m, avoiding the narrow wall corridor at y=+-0.45m "
+        f"(x in [5.4, 9.0]) where GPS drops out (steps 20-35) and landmarks at y=5.5m "
+        f"are out of the 5.0m visibility range along Route A, while bringing landmarks "
+        f"into range for accurate localization."
+    )
+    return {
+        "route": best_route,
+        "success_prob": best_prob,
+        "reasoning": reasoning,
+    }
+
+```
+
+## Verifier feedback on that solution
+- Execution failed: AgentError: TypeError: __init__(): incompatible constructor arguments. The following argument types are supported:
+    1. gtsam.gtsam.GPSFactor2(key: typing.SupportsInt | typing.SupportsIndex, gpsIn: typing.Annotated[numpy.typing.ArrayLike, numpy.float64, "[3, 1]"], model: gtsam.gtsam.noiseModel.Base)
+
+Invoked with: 8646911284551352320, array([-0.06854817,  0.27129691]), isotropic dim=2 sigma=0.15
+
+Traceback (most recent call last):
+  File "agent_worker.py", line 70, in main
+    pose, cov = est.step(req["m"])
+                ^^^^^^^^^^^^^^^^^^
+  File "solution.py", line 123, in step
+    gtsam.GPSFactor2(key_k, gtsam.Point2(gx, gy), self.gps_noise)
+TypeError: __init__(): incompatible constructor arguments. The following argument types are supported:
+    1. gtsam.gtsam.GPSFactor2(key: typing.SupportsInt | typing.SupportsIndex, gpsIn: typing.Annotated[numpy.typing.ArrayLike, numpy.float64, "[3, 1]"], model: gtsam.gtsam.noiseModel.Base)
+
+Invoked with: 8646911284551352320, array([-0.06854817,  0.27129691]), isotropic dim=2 sigma=0.15
+
+
+
+Fix the failed checks. Return the complete revised solution.py.

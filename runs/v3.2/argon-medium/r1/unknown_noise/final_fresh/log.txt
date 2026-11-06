@@ -1,0 +1,11 @@
+[unknown_noise/fresh] layer 0+: running 30 datasets
+[unknown_noise/fresh] layers 2-3
+[unknown_noise/fresh] layer 4: 200 paired trials per route
+route trials 25/200
+route trials 50/200
+route trials 75/200
+route trials 100/200
+route trials 125/200
+route trials 150/200
+route trials 175/200
+route trials 200/200

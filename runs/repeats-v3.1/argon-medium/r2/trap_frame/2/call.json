@@ -1,0 +1,37 @@
+{
+  "usage": {
+    "input_tokens": 23731,
+    "output_tokens": 6048
+  },
+  "usd": 0.107942,
+  "seconds": 66.07931699999972,
+  "meta": {
+    "modelVersion": "gemini-4-argon",
+    "responseId": "TTLuas_VBsvgytMPi4OtwAw",
+    "usageMetadata": {
+      "promptTokenCount": 23731,
+      "candidatesTokenCount": 4995,
+      "totalTokenCount": 29779,
+      "cachedContentTokenCount": 18483,
+      "promptTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 23731
+        }
+      ],
+      "cacheTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 18483
+        }
+      ],
+      "candidatesTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 4995
+        }
+      ],
+      "thoughtsTokenCount": 1053
+    }
+  }
+}

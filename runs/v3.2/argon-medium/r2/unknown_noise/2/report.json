@@ -1,0 +1,164 @@
+{
+  "task": "unknown_noise",
+  "seed_set": "eval",
+  "isolation": "NONE: subprocess fallback (Docker unavailable); not a security boundary",
+  "thresholds_frozen": true,
+  "layers": {
+    "execution": {
+      "pass": true,
+      "determinism_max_pose_diff": 0.0,
+      "determinism_max_rel_cov_diff": 0.0
+    },
+    "structural": {
+      "provided": true,
+      "summary": {
+        "n_factors": 279,
+        "factor_types": {
+          "PriorFactorPose2": 1,
+          "CustomFactor": 220,
+          "BetweenFactorPose2": 58
+        },
+        "n_variables": 59,
+        "n_values": 59,
+        "connected_components": 1,
+        "unary_factors": 221,
+        "first_key": ""
+      },
+      "notes": []
+    },
+    "accuracy": {
+      "pass": true,
+      "ate_m": 0.06622923019227407,
+      "reference_ate_m": 0.06580157176337761,
+      "bound_m": 0.3487023576450664,
+      "dropout_ate_m": 0.0497369040993973,
+      "reference_dropout_ate_m": 0.04958932828966325,
+      "per_scenario_ate_m": [
+        0.06551445510905507,
+        0.08683021943174311,
+        0.05177916642113942,
+        0.0716863935281,
+        0.04739429119038753,
+        0.053003035866501916,
+        0.05883080918555829,
+        0.08708054723869059,
+        0.06409907426181641,
+        0.06853221084331429,
+        0.06575602300154644,
+        0.06862716119555652,
+        0.06859756192297702,
+        0.06427419911231147,
+        0.0558427641235709,
+        0.047576406890193185,
+        0.06235108235903017,
+        0.06680824700531612,
+        0.0565947576055509,
+        0.052607577556890314,
+        0.05769147944057647,
+        0.08426206164468533,
+        0.06527536828482926,
+        0.08147556093796442,
+        0.0768328588397297,
+        0.06042590685340666,
+        0.06341412515086005,
+        0.07677546612253866,
+        0.09789378195698892,
+        0.05904431268739299
+      ]
+    },
+    "calibration": {
+      "K": 30,
+      "times": {
+        "end_of_dropout": {
+          "pass": true,
+          "covered": 30,
+          "coverage_p_value": 1.0,
+          "overconfidence_ok": true,
+          "mean_nees": 2.339774058662148,
+          "nees_lower_bound": 1.973210139189354,
+          "underconfidence_ok": true,
+          "mean_nll": -7.060178635597988,
+          "reference_mean_nll": -7.188838331454195,
+          "nll_bound": -6.188838331454195,
+          "nll_ok": true,
+          "mean_position_cov_trace_m2": 0.002908212999512134,
+          "per_trajectory_coverage_diagnostic": 0.9775385403991532
+        },
+        "end_of_trajectory": {
+          "pass": true,
+          "covered": 27,
+          "coverage_p_value": 0.18782118685303992,
+          "overconfidence_ok": true,
+          "mean_nees": 3.061222037641728,
+          "nees_lower_bound": 1.973210139189354,
+          "underconfidence_ok": true,
+          "mean_nll": -4.548703070836794,
+          "reference_mean_nll": -4.583842727436367,
+          "nll_bound": -3.583842727436367,
+          "nll_ok": true,
+          "mean_position_cov_trace_m2": 0.009378527642660344,
+          "per_trajectory_coverage_diagnostic": 0.9775385403991532
+        }
+      },
+      "pass": true,
+      "wording": "no calibration inconsistency detected (K=30)"
+    },
+    "route": {
+      "pass": true,
+      "regret_outcome": "pass",
+      "T": 200,
+      "chosen": "B",
+      "stated_success_prob": 1.0,
+      "reasoning": "Route B avoids the narrow wall corridor at y=+-0.45 (x in [5.4, 9.0]) and stays within range of the landmarks at y=5.5 during the GPS dropout (steps 20-35), whereas Route A passes directly through the narrow corridor with neither GPS nor landmark measurements. Closed-loop Monte Carlo success probabilities: A=0.60, B=1.00.",
+      "routes": {
+        "A": {
+          "success_rate": 0.56,
+          "wilson95": [
+            0.4907154834956251,
+            0.6270229957941764
+          ],
+          "collision_rate": 0.44
+        },
+        "B": {
+          "success_rate": 1.0,
+          "wilson95": [
+            0.9811539940816791,
+            1.0
+          ],
+          "collision_rate": 0.0
+        }
+      },
+      "diff_B_minus_A": 0.43999999999999995,
+      "diff_ci95": [
+        0.375,
+        0.51
+      ],
+      "regret": 0.0,
+      "regret_ci95": [
+        0.0,
+        0.0
+      ],
+      "delta": 0.05,
+      "stated_check": {
+        "pass": true,
+        "stated": 1.0,
+        "estimated": 1.0,
+        "estimated_wilson95": [
+          0.9811539940816791,
+          1.0
+        ],
+        "abs_diff": 0.0,
+        "tolerance": 0.15
+      },
+      "mode": "submitted estimator in the loop",
+      "reference_estimator_rates": {
+        "A": 0.59,
+        "B": 1.0
+      }
+    }
+  },
+  "accepted": true,
+  "reward": 1.0,
+  "feedback": [],
+  "seconds": 351.4044266660021
+}

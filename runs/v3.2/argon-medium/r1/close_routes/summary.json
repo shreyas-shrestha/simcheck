@@ -20,9 +20,9 @@
   "feedback_numbers_in_final_code": [],
   "final_fresh": {
     "attempt": 1,
-    "reward": null,
-    "accepted": null
+    "reward": 1.0,
+    "accepted": true
   },
   "decision_only": false,
-  "max_attempts": 1
+  "max_attempts": 3
 }
