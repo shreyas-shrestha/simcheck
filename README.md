@@ -13,9 +13,11 @@ Agent code runs through `simcheck/sandbox.py`:
   `docker build -t simcheck-agent:latest .`, then check it with
   `SIMCHECK_REQUIRE_DOCKER=1 .venv/bin/python -m pytest -q simcheck/tests/test_docker.py`
   (network blocked, no env vars, worker read-only, hangs killed, same output as in-process).
-- **Limitation:** Docker was not available on the build machine, so every result so far used
-  `SubprocessRunner`, a separate `python -I` process with an empty environment. That is **not** a
-  security boundary. Each `report.json` records which one was used in its `isolation` field.
+- The model runs were graded with `SubprocessRunner` (a separate `python -I` process with an empty
+  environment, **not** a security boundary) because Docker was unavailable at the time. Their final
+  solutions were then re-graded in Docker with `scripts/regrade_docker.py` (no API calls), which writes
+  `runs/<model>/<task>/docker/{eval,fresh}/` and `runs/docker_regrade.md`. Each `report.json` records
+  which runner was used in its `isolation` field. New runs use Docker automatically when it is available.
 - Limits (`config.json` → `execution`): 30 s per message, 900 s for `choose_route`, 3600 s per grading run.
   Tracebacks in feedback are stripped to file names, so no host paths reach the model.
 
