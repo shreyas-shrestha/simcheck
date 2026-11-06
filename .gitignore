@@ -20,3 +20,10 @@ runs/*
 
 # committed results snapshot (scenarios included so results are self-contained)
 !results/scenarios/
+
+# generated media and local tooling (scripts are committed, outputs are zipped for handoff)
+deck_assets/
+demo_clips/
+assets/fonts/
+build/
+*.zip
