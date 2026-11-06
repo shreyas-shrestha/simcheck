@@ -27,8 +27,8 @@ ROLLOUT_ROUTE = "A"  # both attempts chose B, where all 200 trials succeeded for
 SEED_SET = "eval"
 SELECT_RNG_SEED = 20261106
 CACHE = ROOT / "build" / "media_cache"
-DECK = ROOT / "deck_assets"
-CLIPS = ROOT / "demo_clips"
+DECK = ROOT / "demo" / "deck_assets"
+CLIPS = ROOT / "demo" / "demo_clips"
 FONTS = ROOT / "assets" / "fonts"
 CHI2_2D_95 = 5.991464547107979  # 95% cutoff, 2 dof (position ellipse)
 

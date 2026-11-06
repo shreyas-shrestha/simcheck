@@ -1,0 +1,431 @@
+{
+  "featured_run": "results/v3.2/argon-medium/r2/unknown_noise",
+  "model": "argon-medium",
+  "seed_selection": {
+    "seed": 2100052,
+    "trial_index": 52,
+    "route": "A",
+    "seed_set": "eval",
+    "rule": "uniform random choice (numpy default_rng(20261106).choice) over eval route-trial indices where the rollout outcome OR the per-step truth-inside-95%-ellipse rate differs between attempt 1 and the final attempt",
+    "route_note": "both attempts chose route B, where all 200 trials succeeded for both; route A (the featureless hallway) is where outcomes differ, so rollouts use route A",
+    "refinement": "candidates further restricted to seeds where attempt 1's ellipse misses the truth at least once in the middle half of the route (0.25n <= step <= 0.75n); requested by the user after the unrefined rule picked seed 2100054, whose only miss was at step 3",
+    "unrefined_pick": {
+      "seed": 2100054,
+      "trial_index": 54,
+      "n_candidates": 145
+    },
+    "n_trials": 200,
+    "n_candidates": 101,
+    "n_outcome_differs": 17,
+    "n_inside_rate_differs": 141,
+    "outcome_differs_indices": [
+      22,
+      29,
+      35,
+      39,
+      47,
+      65,
+      67,
+      80,
+      84,
+      91,
+      94,
+      104,
+      106,
+      120,
+      133,
+      145,
+      191
+    ],
+    "attempt1": {
+      "outcome": {
+        "arrived": false,
+        "collision": true,
+        "steps": 35,
+        "success": false
+      },
+      "inside_rate": 0.9444444444444444,
+      "recorded": {
+        "success": false,
+        "collision": true
+      }
+    },
+    "final": {
+      "outcome": {
+        "arrived": false,
+        "collision": true,
+        "steps": 27,
+        "success": false
+      },
+      "inside_rate": 1.0,
+      "recorded": {
+        "success": false,
+        "collision": true
+      }
+    },
+    "odom_noise_scale": 1.7634549388448297,
+    "isolation": "docker --network none, read-only rootfs, public/ copy mounted ro, no env vars"
+  },
+  "rollout_runner": "docker --network none, read-only rootfs, public/ copy mounted ro, no env vars",
+  "clips": {
+    "demo01_title": {
+      "file": "demo01_title.mp4",
+      "duration_s": 5.0,
+      "frames": 150,
+      "fps": 30,
+      "codec": "H.264 (libx264 -preset veryfast -crf 18, yuv420p)",
+      "size": [
+        1920,
+        1080
+      ],
+      "sources": [],
+      "numbers_shown": {}
+    },
+    "demo02_world_map": {
+      "file": "demo02_world_map.mp4",
+      "duration_s": 8.0,
+      "frames": 240,
+      "fps": 30,
+      "codec": "H.264 (libx264 -preset veryfast -crf 18, yuv420p)",
+      "size": [
+        1920,
+        1080
+      ],
+      "sources": [
+        "simcheck.verifier.task_spec('unknown_noise') (config_v3.2.json)"
+      ],
+      "numbers_shown": {
+        "landmarks": 6,
+        "routes": [
+          "A",
+          "B"
+        ]
+      }
+    },
+    "demo03_agent_plan_attempt1": {
+      "file": "demo03_agent_plan_attempt1.mp4",
+      "duration_s": 6.0,
+      "frames": 180,
+      "fps": 30,
+      "codec": "H.264 (libx264 -preset veryfast -crf 18, yuv420p)",
+      "size": [
+        1920,
+        1080
+      ],
+      "sources": [
+        "results/v3.2/argon-medium/r2/unknown_noise/1/report.json -> layers.route",
+        "results/v3.2/argon-medium/r2/unknown_noise/1/prompt.md"
+      ],
+      "numbers_shown": {
+        "route": "B",
+        "success_prob": 1.0,
+        "reasoning": "Route B avoids the narrow wall corridor at y=+-0.45 (x in [5.4, 9.0]) and stays within range of the landmarks at y=5.5 during the GPS dropout (steps 20-35), whereas Route A passes directly through the narrow corridor with neither GPS nor landmark measurements. Closed-loop Monte Carlo success probabilities: A=0.68, B=1.00.",
+        "task_line": "ODOMETRY NOISE: odometry noise std is between 0.5x and 3x the nominal value in `sensor_noise_std.odom`; the exact value is not given (`odom_noise_scale_range`). Other noise values are exact."
+      }
+    },
+    "demo04_rollout_attempt1_overconfident": {
+      "file": "demo04_rollout_attempt1_overconfident.mp4",
+      "duration_s": 14.0,
+      "frames": 420,
+      "fps": 30,
+      "codec": "H.264 (libx264 -preset veryfast -crf 18, yuv420p)",
+      "size": [
+        1920,
+        1080
+      ],
+      "sources": [
+        "rollout replay of results/v3.2/argon-medium/r2/unknown_noise/1/solution.py through simcheck/sim.py",
+        "build/media_cache/selection.json",
+        "results/v3.2/argon-medium/r2/unknown_noise/1/artifacts.npz"
+      ],
+      "numbers_shown": {
+        "seed": 2100052,
+        "route": "A",
+        "outcome": "COLLISION",
+        "steps": 36,
+        "miss_steps": [
+          2,
+          24
+        ],
+        "held_on_step": 24,
+        "recorded_outcome": {
+          "success": false,
+          "collision": true
+        }
+      },
+      "notes": "isolation: docker --network none, read-only rootfs, public/ copy mounted ro, no env vars. Attempt 1 chose route B for its graded run; route A is shown because that is where attempt 1 and the final attempt differ."
+    },
+    "demo05_calibration_tally_attempt1": {
+      "file": "demo05_calibration_tally_attempt1.mp4",
+      "duration_s": 8.0,
+      "frames": 240,
+      "fps": 30,
+      "codec": "H.264 (libx264 -preset veryfast -crf 18, yuv420p)",
+      "size": [
+        1920,
+        1080
+      ],
+      "sources": [
+        "results/v3.2/argon-medium/r2/unknown_noise/1/artifacts.npz",
+        "results/v3.2/argon-medium/r2/unknown_noise/1/report.json"
+      ],
+      "numbers_shown": {
+        "covered": 24,
+        "K": 30,
+        "coverage95": 0.8,
+        "target": 0.95,
+        "gate": "NEES <= 7.81 (chi2 3 dof, 95%)",
+        "per_seed_nees": [
+          2.939,
+          3.481,
+          1.263,
+          8.473,
+          0.754,
+          2.555,
+          2.946,
+          8.303,
+          1.006,
+          6.201,
+          12.987,
+          0.091,
+          3.498,
+          5.43,
+          0.948,
+          1.366,
+          3.193,
+          3.825,
+          0.748,
+          2.9,
+          1.726,
+          8.346,
+          0.622,
+          1.595,
+          4.491,
+          0.51,
+          0.157,
+          11.538,
+          15.256,
+          0.307
+        ]
+      }
+    },
+    "demo06_verifier_feedback": {
+      "file": "demo06_verifier_feedback.mp4",
+      "duration_s": 6.0,
+      "frames": 180,
+      "fps": 30,
+      "codec": "H.264 (libx264 -preset veryfast -crf 18, yuv420p)",
+      "size": [
+        1920,
+        1080
+      ],
+      "sources": [
+        "results/v3.2/argon-medium/r2/unknown_noise/1/report.json",
+        "results/v3.2/argon-medium/r2/unknown_noise/1/report.json"
+      ],
+      "numbers_shown": {
+        "checklist": {
+          "Runs": true,
+          "Accurate": true,
+          "Honest": false,
+          "Safe": true
+        },
+        "feedback": [
+          "Calibration at end of trajectory: overconfident. Only 24/30 runs had NEES <= 7.81 (binomial p = 0.0033 < 0.01). Covariance too small (mean NEES 3.92, expected about 3)."
+        ]
+      }
+    },
+    "demo07_before_after_same_seed": {
+      "file": "demo07_before_after_same_seed.mp4",
+      "duration_s": 15.0,
+      "frames": 450,
+      "fps": 30,
+      "codec": "H.264 (libx264 -preset veryfast -crf 18, yuv420p)",
+      "size": [
+        1920,
+        1080
+      ],
+      "sources": [
+        "rollout replay of results/v3.2/argon-medium/r2/unknown_noise/1/solution.py and results/v3.2/argon-medium/r2/unknown_noise/2/solution.py",
+        "build/media_cache/selection.json",
+        "results/v3.2/argon-medium/r2/unknown_noise/2/report.json",
+        "results/v3.2/argon-medium/r2/unknown_noise/final_fresh/report.json"
+      ],
+      "numbers_shown": {
+        "seed": 2100052,
+        "route": "A",
+        "attempt1": {
+          "outcome": "COLLISION",
+          "steps": 36,
+          "inside_rate": 0.9444444444444444,
+          "recorded_outcome": {
+            "success": false,
+            "collision": true
+          }
+        },
+        "final": {
+          "outcome": "COLLISION",
+          "steps": 28,
+          "inside_rate": 1.0,
+          "recorded_outcome": {
+            "success": false,
+            "collision": true
+          }
+        },
+        "held_on_step": 24,
+        "final_checklist": {
+          "Runs": true,
+          "Accurate": true,
+          "Honest": true,
+          "Safe": true
+        },
+        "fresh_seeds_accepted": true
+      },
+      "notes": "Both attempts collide on this route-A trial (as the verifier recorded); the final checklist is for the graded run, where both attempts chose route B."
+    },
+    "demo08_results_52_to_84": {
+      "file": "demo08_results_52_to_84.mp4",
+      "duration_s": 10.0,
+      "frames": 300,
+      "fps": 30,
+      "codec": "H.264 (libx264 -preset veryfast -crf 18, yuv420p)",
+      "size": [
+        1920,
+        1080
+      ],
+      "sources": [
+        "results/summary/summary.json -> with_vs_without[version=\"all\"]",
+        "results/summary/summary.json -> headline[task=\"prior_needed\"]",
+        "results/summary/summary.json -> headline[task=\"standard\"]",
+        "results/summary/summary.json -> headline[task=\"trap_frame\"]",
+        "results/summary/summary.json -> headline[task=\"trap_units\"]",
+        "results/summary/summary.json -> headline[task=\"close_routes\"]",
+        "results/summary/summary.json -> headline[task=\"unknown_noise\"]"
+      ],
+      "numbers_shown": {
+        "per_task": [
+          {
+            "task": "prior_needed",
+            "n": 5,
+            "first_try": 2,
+            "after": 2,
+            "first_try_wilson95": [
+              0.1176182311592533,
+              0.769280067791163
+            ],
+            "after_wilson95": [
+              0.1176182311592533,
+              0.769280067791163
+            ]
+          },
+          {
+            "task": "standard",
+            "n": 5,
+            "first_try": 3,
+            "after": 5,
+            "first_try_wilson95": [
+              0.23071993220883708,
+              0.8823817688407467
+            ],
+            "after_wilson95": [
+              0.5655085052479191,
+              1.0
+            ]
+          },
+          {
+            "task": "trap_frame",
+            "n": 5,
+            "first_try": 2,
+            "after": 5,
+            "first_try_wilson95": [
+              0.1176182311592533,
+              0.769280067791163
+            ],
+            "after_wilson95": [
+              0.5655085052479191,
+              1.0
+            ]
+          },
+          {
+            "task": "trap_units",
+            "n": 5,
+            "first_try": 3,
+            "after": 5,
+            "first_try_wilson95": [
+              0.23071993220883708,
+              0.8823817688407467
+            ],
+            "after_wilson95": [
+              0.5655085052479191,
+              1.0
+            ]
+          },
+          {
+            "task": "close_routes",
+            "n": 3,
+            "first_try": 3,
+            "after": 3,
+            "first_try_wilson95": [
+              0.43849391955098227,
+              1.0
+            ],
+            "after_wilson95": [
+              0.43849391955098227,
+              1.0
+            ]
+          },
+          {
+            "task": "unknown_noise",
+            "n": 2,
+            "first_try": 0,
+            "after": 1,
+            "first_try_wilson95": [
+              0.0,
+              0.6576280471103807
+            ],
+            "after_wilson95": [
+              0.09452865480086614,
+              0.9054713451991339
+            ]
+          }
+        ],
+        "end_line": "13/25 \u2192 21/25 \u00b7 8 fixed, 0 broken \u00b7 p = 0.008",
+        "mcnemar_exact_p": 0.0078125
+      }
+    },
+    "demo09_accuracy_only_misses": {
+      "file": "demo09_accuracy_only_misses.mp4",
+      "duration_s": 6.0,
+      "frames": 180,
+      "fps": 30,
+      "codec": "H.264 (libx264 -preset veryfast -crf 18, yuv420p)",
+      "size": [
+        1920,
+        1080
+      ],
+      "sources": [
+        "results/summary/summary.json -> with_vs_without[version=\"all\"]"
+      ],
+      "numbers_shown": {
+        "accuracy_only_grader_accepts": 17,
+        "wrongly_accepted_by_accuracy_only": 4,
+        "n": 25,
+        "text": "An accuracy-only check accepts 17/25 runs, 4 of them actually failing."
+      },
+      "notes": "cells are a count display only; their order does not identify specific runs"
+    },
+    "demo10_close": {
+      "file": "demo10_close.mp4",
+      "duration_s": 6.0,
+      "frames": 180,
+      "fps": 30,
+      "codec": "H.264 (libx264 -preset veryfast -crf 18, yuv420p)",
+      "size": [
+        1920,
+        1080
+      ],
+      "sources": [],
+      "numbers_shown": {}
+    }
+  }
+}

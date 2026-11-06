@@ -1,4 +1,4 @@
-"""Demo clips -> demo_clips/ (MP4, H.264 -preset veryfast, 30 fps) and demo_clips/manifest.json.
+"""Demo clips -> demo/demo_clips/ (MP4, H.264 -preset veryfast, 30 fps) and demo/demo_clips/manifest.json.
 
     .venv/bin/python scripts/media/clips.py            # all clips
     .venv/bin/python scripts/media/clips.py demo04     # only clips whose name starts with demo04

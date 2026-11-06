@@ -1,4 +1,4 @@
-"""Slide stills -> deck_assets/ (PNG; charts also as *_transparent.png) and deck_assets/deck_numbers.json.
+"""Slide stills -> demo/deck_assets/ (PNG; charts also as *_transparent.png) and demo/deck_assets/deck_numbers.json.
 
     .venv/bin/python scripts/media/deck.py
 """

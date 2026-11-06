@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from media import common as C  # noqa: E402
 
-FEATURED_SEED = 2100052  # logged in build/media_cache/selection.json and demo_clips/manifest.json
+FEATURED_SEED = 2100052  # logged in build/media_cache/selection.json and demo/demo_clips/manifest.json
 
 if not (C.FEATURED / "1" / "artifacts.npz").exists():
     pytest.skip("results/ for the featured run are not present", allow_module_level=True)

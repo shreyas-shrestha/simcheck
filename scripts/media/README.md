@@ -2,7 +2,7 @@
 
 Offline: numbers come from `results/summary/summary.json` and the saved run folders; rollouts replay the
 saved `solution.py` files through `simcheck/sim.py` (Docker if available, else the subprocess fallback;
-the runner is recorded in `demo_clips/manifest.json`). No model API calls.
+the runner is recorded in `demo/demo_clips/manifest.json`). No model API calls.
 
 Setup (fonts and the ffmpeg binary are not in git):
 
@@ -17,8 +17,8 @@ Render:
 
 ```bash
 .venv/bin/python scripts/media/common.py   # replay 2x200 route-A trials, pick + log the featured seed
-.venv/bin/python scripts/media/deck.py     # deck_assets/*.png + deck_numbers.json
-.venv/bin/python scripts/media/clips.py    # demo_clips/*.mp4 + manifest.json
+.venv/bin/python scripts/media/deck.py     # demo/deck_assets/*.png + deck_numbers.json
+.venv/bin/python scripts/media/clips.py    # demo/demo_clips/*.mp4 + manifest.json
 .venv/bin/python -m pytest simcheck/tests/test_media_rollouts.py
 ```
 

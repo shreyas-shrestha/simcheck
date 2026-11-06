@@ -1,0 +1,391 @@
+{
+  "featured_run": "results/v3.2/argon-medium/r2/unknown_noise",
+  "attempts": {
+    "attempt1": "1",
+    "final": "2"
+  },
+  "seed_selection": {
+    "seed": 2100052,
+    "trial_index": 52,
+    "route": "A",
+    "seed_set": "eval",
+    "rule": "uniform random choice (numpy default_rng(20261106).choice) over eval route-trial indices where the rollout outcome OR the per-step truth-inside-95%-ellipse rate differs between attempt 1 and the final attempt",
+    "route_note": "both attempts chose route B, where all 200 trials succeeded for both; route A (the featureless hallway) is where outcomes differ, so rollouts use route A",
+    "refinement": "candidates further restricted to seeds where attempt 1's ellipse misses the truth at least once in the middle half of the route (0.25n <= step <= 0.75n); requested by the user after the unrefined rule picked seed 2100054, whose only miss was at step 3",
+    "unrefined_pick": {
+      "seed": 2100054,
+      "trial_index": 54,
+      "n_candidates": 145
+    },
+    "n_trials": 200,
+    "n_candidates": 101,
+    "n_outcome_differs": 17,
+    "n_inside_rate_differs": 141,
+    "outcome_differs_indices": [
+      22,
+      29,
+      35,
+      39,
+      47,
+      65,
+      67,
+      80,
+      84,
+      91,
+      94,
+      104,
+      106,
+      120,
+      133,
+      145,
+      191
+    ],
+    "attempt1": {
+      "outcome": {
+        "arrived": false,
+        "collision": true,
+        "steps": 35,
+        "success": false
+      },
+      "inside_rate": 0.9444444444444444,
+      "recorded": {
+        "success": false,
+        "collision": true
+      }
+    },
+    "final": {
+      "outcome": {
+        "arrived": false,
+        "collision": true,
+        "steps": 27,
+        "success": false
+      },
+      "inside_rate": 1.0,
+      "recorded": {
+        "success": false,
+        "collision": true
+      }
+    },
+    "odom_noise_scale": 1.7634549388448297,
+    "isolation": "docker --network none, read-only rootfs, public/ copy mounted ro, no env vars"
+  },
+  "numbers": [
+    {
+      "asset": "s01_cover_hero.png",
+      "label": "attempt-1 rollout step shown (ellipse misses truth)",
+      "value": 24,
+      "source": "build/media_cache rollout replay of results/v3.2/argon-medium/r2/unknown_noise/1/solution.py"
+    },
+    {
+      "asset": "s06_results_first_try_vs_feedback.png",
+      "label": "prior_needed first try",
+      "value": "2/5",
+      "source": "results/summary/summary.json -> headline[task=\"prior_needed\"]"
+    },
+    {
+      "asset": "s06_results_first_try_vs_feedback.png",
+      "label": "prior_needed first try Wilson 95%",
+      "value": [
+        0.1176182311592533,
+        0.769280067791163
+      ],
+      "source": "results/summary/summary.json -> headline[task=\"prior_needed\"]"
+    },
+    {
+      "asset": "s06_results_first_try_vs_feedback.png",
+      "label": "prior_needed after feedback (fresh seeds)",
+      "value": "2/5",
+      "source": [
+        "results/repeats-v3.1/argon-medium/r1/prior_needed/summary.json",
+        "results/repeats-v3.1/argon-medium/r2/prior_needed/summary.json",
+        "results/repeats-v3.1/argon-medium/r3/prior_needed/summary.json",
+        "results/repeats-v3.1/argon-medium/r4/prior_needed/summary.json",
+        "results/repeats-v3.1/argon-medium/r5/prior_needed/summary.json"
+      ]
+    },
+    {
+      "asset": "s06_results_first_try_vs_feedback.png",
+      "label": "prior_needed after feedback Wilson 95%",
+      "value": [
+        0.1176182311592533,
+        0.769280067791163
+      ],
+      "source": "computed from the counts above with scripts/summarize.py wilson()"
+    },
+    {
+      "asset": "s06_results_first_try_vs_feedback.png",
+      "label": "standard first try",
+      "value": "3/5",
+      "source": "results/summary/summary.json -> headline[task=\"standard\"]"
+    },
+    {
+      "asset": "s06_results_first_try_vs_feedback.png",
+      "label": "standard first try Wilson 95%",
+      "value": [
+        0.23071993220883708,
+        0.8823817688407467
+      ],
+      "source": "results/summary/summary.json -> headline[task=\"standard\"]"
+    },
+    {
+      "asset": "s06_results_first_try_vs_feedback.png",
+      "label": "standard after feedback (fresh seeds)",
+      "value": "5/5",
+      "source": [
+        "results/repeats-v3.1/argon-medium/r1/standard/summary.json",
+        "results/repeats-v3.1/argon-medium/r2/standard/summary.json",
+        "results/repeats-v3.1/argon-medium/r3/standard/summary.json",
+        "results/repeats-v3.1/argon-medium/r4/standard/summary.json",
+        "results/repeats-v3.1/argon-medium/r5/standard/summary.json"
+      ]
+    },
+    {
+      "asset": "s06_results_first_try_vs_feedback.png",
+      "label": "standard after feedback Wilson 95%",
+      "value": [
+        0.5655085052479191,
+        1.0
+      ],
+      "source": "computed from the counts above with scripts/summarize.py wilson()"
+    },
+    {
+      "asset": "s06_results_first_try_vs_feedback.png",
+      "label": "trap_frame first try",
+      "value": "2/5",
+      "source": "results/summary/summary.json -> headline[task=\"trap_frame\"]"
+    },
+    {
+      "asset": "s06_results_first_try_vs_feedback.png",
+      "label": "trap_frame first try Wilson 95%",
+      "value": [
+        0.1176182311592533,
+        0.769280067791163
+      ],
+      "source": "results/summary/summary.json -> headline[task=\"trap_frame\"]"
+    },
+    {
+      "asset": "s06_results_first_try_vs_feedback.png",
+      "label": "trap_frame after feedback (fresh seeds)",
+      "value": "5/5",
+      "source": [
+        "results/repeats-v3.1/argon-medium/r1/trap_frame/summary.json",
+        "results/repeats-v3.1/argon-medium/r2/trap_frame/summary.json",
+        "results/repeats-v3.1/argon-medium/r3/trap_frame/summary.json",
+        "results/repeats-v3.1/argon-medium/r4/trap_frame/summary.json",
+        "results/repeats-v3.1/argon-medium/r5/trap_frame/summary.json"
+      ]
+    },
+    {
+      "asset": "s06_results_first_try_vs_feedback.png",
+      "label": "trap_frame after feedback Wilson 95%",
+      "value": [
+        0.5655085052479191,
+        1.0
+      ],
+      "source": "computed from the counts above with scripts/summarize.py wilson()"
+    },
+    {
+      "asset": "s06_results_first_try_vs_feedback.png",
+      "label": "trap_units first try",
+      "value": "3/5",
+      "source": "results/summary/summary.json -> headline[task=\"trap_units\"]"
+    },
+    {
+      "asset": "s06_results_first_try_vs_feedback.png",
+      "label": "trap_units first try Wilson 95%",
+      "value": [
+        0.23071993220883708,
+        0.8823817688407467
+      ],
+      "source": "results/summary/summary.json -> headline[task=\"trap_units\"]"
+    },
+    {
+      "asset": "s06_results_first_try_vs_feedback.png",
+      "label": "trap_units after feedback (fresh seeds)",
+      "value": "5/5",
+      "source": [
+        "results/repeats-v3.1/argon-medium/r1/trap_units/summary.json",
+        "results/repeats-v3.1/argon-medium/r2/trap_units/summary.json",
+        "results/repeats-v3.1/argon-medium/r3/trap_units/summary.json",
+        "results/repeats-v3.1/argon-medium/r4/trap_units/summary.json",
+        "results/repeats-v3.1/argon-medium/r5/trap_units/summary.json"
+      ]
+    },
+    {
+      "asset": "s06_results_first_try_vs_feedback.png",
+      "label": "trap_units after feedback Wilson 95%",
+      "value": [
+        0.5655085052479191,
+        1.0
+      ],
+      "source": "computed from the counts above with scripts/summarize.py wilson()"
+    },
+    {
+      "asset": "s06_results_first_try_vs_feedback.png",
+      "label": "close_routes first try",
+      "value": "3/3",
+      "source": "results/summary/summary.json -> headline[task=\"close_routes\"]"
+    },
+    {
+      "asset": "s06_results_first_try_vs_feedback.png",
+      "label": "close_routes first try Wilson 95%",
+      "value": [
+        0.43849391955098227,
+        1.0
+      ],
+      "source": "results/summary/summary.json -> headline[task=\"close_routes\"]"
+    },
+    {
+      "asset": "s06_results_first_try_vs_feedback.png",
+      "label": "close_routes after feedback (fresh seeds)",
+      "value": "3/3",
+      "source": [
+        "results/v3.2/argon-medium/r1/close_routes/summary.json",
+        "results/v3.2/argon-medium/r2/close_routes/summary.json",
+        "results/v3.2/argon-medium/r3/close_routes/summary.json"
+      ]
+    },
+    {
+      "asset": "s06_results_first_try_vs_feedback.png",
+      "label": "close_routes after feedback Wilson 95%",
+      "value": [
+        0.43849391955098227,
+        1.0
+      ],
+      "source": "computed from the counts above with scripts/summarize.py wilson()"
+    },
+    {
+      "asset": "s06_results_first_try_vs_feedback.png",
+      "label": "unknown_noise first try",
+      "value": "0/2",
+      "source": "results/summary/summary.json -> headline[task=\"unknown_noise\"]"
+    },
+    {
+      "asset": "s06_results_first_try_vs_feedback.png",
+      "label": "unknown_noise first try Wilson 95%",
+      "value": [
+        0.0,
+        0.6576280471103807
+      ],
+      "source": "results/summary/summary.json -> headline[task=\"unknown_noise\"]"
+    },
+    {
+      "asset": "s06_results_first_try_vs_feedback.png",
+      "label": "unknown_noise after feedback (fresh seeds)",
+      "value": "1/2",
+      "source": [
+        "results/v3.2/argon-medium/r1/unknown_noise/summary.json",
+        "results/v3.2/argon-medium/r2/unknown_noise/summary.json"
+      ]
+    },
+    {
+      "asset": "s06_results_first_try_vs_feedback.png",
+      "label": "unknown_noise after feedback Wilson 95%",
+      "value": [
+        0.09452865480086614,
+        0.9054713451991339
+      ],
+      "source": "computed from the counts above with scripts/summarize.py wilson()"
+    },
+    {
+      "asset": "s06_results_first_try_vs_feedback.png",
+      "label": "headline",
+      "value": "13/25 -> 21/25",
+      "source": "results/summary/summary.json -> with_vs_without[version=\"all\"]"
+    },
+    {
+      "asset": "s07_before_after_unknown_noise.png",
+      "label": "step shown",
+      "value": 24,
+      "source": "rollout replay (max attempt-1 Mahalanobis miss)"
+    },
+    {
+      "asset": "s07_before_after_unknown_noise.png",
+      "label": "seed",
+      "value": 2100052,
+      "source": "build/media_cache/selection.json"
+    },
+    {
+      "asset": "s07_before_after_unknown_noise.png",
+      "label": "attempt-1 squared Mahalanobis distance at that step",
+      "value": 6.619,
+      "source": "rollout replay"
+    },
+    {
+      "asset": "s08_feedback_before.png",
+      "label": "feedback text (verbatim)",
+      "value": [
+        "Route: stated success probability 0.76 differs from the measured rate 0.505 (95% CI [0.436, 0.574]) by more than 0.15."
+      ],
+      "source": "results/repeats-v3.1/argon-medium/r1/prior_needed/1/report.json"
+    },
+    {
+      "asset": "s08_feedback_after.png",
+      "label": "feedback text (verbatim)",
+      "value": [
+        "Calibration at end of trajectory: overconfident. Only 24/30 runs had NEES <= 7.81 (binomial p = 0.0033 < 0.01). Covariance too small (mean NEES 3.92, expected about 3)."
+      ],
+      "source": "results/v3.2/argon-medium/r2/unknown_noise/1/report.json"
+    },
+    {
+      "asset": "s09_unknown_noise_coverage.png",
+      "label": "r1 attempt 1",
+      "value": "did not run (execution failed)",
+      "source": "results/v3.2/argon-medium/r1/unknown_noise/1/report.json"
+    },
+    {
+      "asset": "s09_unknown_noise_coverage.png",
+      "label": "r1 attempt 2",
+      "value": "did not run (execution failed)",
+      "source": "results/v3.2/argon-medium/r1/unknown_noise/2/report.json"
+    },
+    {
+      "asset": "s09_unknown_noise_coverage.png",
+      "label": "r1 attempt 3 end_of_dropout coverage95",
+      "value": "20/30",
+      "source": "results/v3.2/argon-medium/r1/unknown_noise/3/report.json"
+    },
+    {
+      "asset": "s09_unknown_noise_coverage.png",
+      "label": "r2 attempt 1 end_of_dropout coverage95",
+      "value": "29/30",
+      "source": "results/v3.2/argon-medium/r2/unknown_noise/1/report.json"
+    },
+    {
+      "asset": "s09_unknown_noise_coverage.png",
+      "label": "r2 attempt 2 end_of_dropout coverage95",
+      "value": "30/30",
+      "source": "results/v3.2/argon-medium/r2/unknown_noise/2/report.json"
+    },
+    {
+      "asset": "s09_unknown_noise_coverage.png",
+      "label": "r1 attempt 1",
+      "value": "did not run (execution failed)",
+      "source": "results/v3.2/argon-medium/r1/unknown_noise/1/report.json"
+    },
+    {
+      "asset": "s09_unknown_noise_coverage.png",
+      "label": "r1 attempt 2",
+      "value": "did not run (execution failed)",
+      "source": "results/v3.2/argon-medium/r1/unknown_noise/2/report.json"
+    },
+    {
+      "asset": "s09_unknown_noise_coverage.png",
+      "label": "r1 attempt 3 end_of_trajectory coverage95",
+      "value": "12/30",
+      "source": "results/v3.2/argon-medium/r1/unknown_noise/3/report.json"
+    },
+    {
+      "asset": "s09_unknown_noise_coverage.png",
+      "label": "r2 attempt 1 end_of_trajectory coverage95",
+      "value": "24/30",
+      "source": "results/v3.2/argon-medium/r2/unknown_noise/1/report.json"
+    },
+    {
+      "asset": "s09_unknown_noise_coverage.png",
+      "label": "r2 attempt 2 end_of_trajectory coverage95",
+      "value": "27/30",
+      "source": "results/v3.2/argon-medium/r2/unknown_noise/2/report.json"
+    }
+  ]
+}
