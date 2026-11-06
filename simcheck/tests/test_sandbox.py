@@ -200,8 +200,7 @@ def test_env_files_and_permissions():
     # Only base-image vars (GPG_KEY is python.org's public release-signing fingerprint, not a secret).
     assert set(info["env"]) <= {"PATH", "HOSTNAME", "LANG", "GPG_KEY", "PYTHON_VERSION", "PYTHON_SHA256", "HOME"}
     assert not [k for k in info["env"] if k != "GPG_KEY" and any(s in k for s in ("KEY", "TOKEN", "SECRET", "OPENAI", "GEMINI"))]
-    assert info["files"] == ["/agent/", "/agent/agent_worker.py", "/agent/solution.py",
-                             "/public/", "/public/spec.json"]
+    assert info["files"] == ["/agent/", "/agent/solution.py", "/public/", "/public/spec.json"]   # worker is baked into the image
     assert info["uid"] == 65534 and not info["can_write_agent"] and not info["can_write_public"]
 
 

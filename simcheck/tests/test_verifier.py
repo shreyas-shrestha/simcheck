@@ -186,3 +186,29 @@ def test_reward_example():
     rep = {"layers": {"execution": {"pass": True}, "accuracy": {"pass": True},
                       "calibration": {"pass": False}, "route": {"pass": False}}}
     assert V.reward(rep) == pytest.approx(0.30)
+
+
+def test_feedback_has_no_host_paths(tmp_path):
+    p = tmp_path / "solution.py"
+    p.write_text("def make_estimator(spec):\n    raise ValueError('boom')\ndef choose_route(spec):\n    return {}\n")
+    rep = V.verify(SubprocessRunner(p), "standard", "dev", progress=lambda *_: None)
+    text = "\n".join(rep["feedback"])
+    assert str(tmp_path) not in text and "/Users/" not in text and "/var/folders" not in text
+    assert 'File "solution.py"' in text
+
+
+def test_total_time_budget():
+    import time
+    from simcheck.sandbox import Budgeted, RunnerError
+
+    class Slow:
+        isolation = "test"
+        def call(self, req, timeout=None):
+            time.sleep(0.2)
+            return {"ok": True}
+        def close(self):
+            pass
+    b = Budgeted(Slow(), 0.3)
+    b.call({"cmd": "make"}); b.call({"cmd": "make"})
+    with pytest.raises(RunnerError, match="total time limit"):
+        b.call({"cmd": "make"})

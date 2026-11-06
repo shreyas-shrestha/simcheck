@@ -10,11 +10,13 @@ import atexit
 import json
 import os
 import queue
+import re
 import shutil
 import subprocess
 import sys
 import tempfile
 import threading
+import time
 import uuid
 import weakref
 from collections import deque
@@ -30,6 +32,14 @@ class RunnerError(Exception):
 
 class AgentError(Exception):
     """The agent's code raised; the worker is still alive."""
+
+
+_HOST_PATH = re.compile(r'File "[^"]*?([^/"]+\.py)"')
+
+
+def clean(text):
+    """Strip host paths from tracebacks before they reach feedback (and the model): keep only file names."""
+    return _HOST_PATH.sub(lambda m: f'File "{m.group(1)}"', text or "")
 
 
 def _roundtrip(x):
@@ -64,20 +74,20 @@ class _ProcRunner:
             self.p.stdin.write(json.dumps(req) + "\n")
             self.p.stdin.flush()
         except (BrokenPipeError, OSError):
-            raise RunnerError(f"sandbox exited (rc={self.p.poll()}): {self.stderr_tail()}")
+            raise RunnerError(f"sandbox exited (rc={self.p.poll()}): {clean(self.stderr_tail())}")
         try:
             line = self.out.get(timeout=timeout or self.call_timeout)
         except queue.Empty:
             self.close()
             raise RunnerError(f"timeout after {timeout or self.call_timeout}s on '{req['cmd']}'")
         if line is None:
-            raise RunnerError(f"sandbox exited (rc={self.p.poll()}): {self.stderr_tail()}")
+            raise RunnerError(f"sandbox exited (rc={self.p.poll()}): {clean(self.stderr_tail())}")
         try:
             resp = json.loads(line)
         except json.JSONDecodeError:
             raise RunnerError(f"malformed protocol line: {line[:200]!r}")
         if not resp.get("ok"):
-            raise AgentError(resp.get("error", "unknown error") + "\n" + resp.get("trace", ""))
+            raise AgentError(clean(resp.get("error", "unknown error") + "\n" + resp.get("trace", "")))
         return resp
 
     def close(self):
@@ -112,7 +122,6 @@ class DockerRunner(_ProcRunner):
         agent = Path(self.tmp) / "agent"
         agent.mkdir()
         shutil.copy(solution_path, agent / "solution.py")
-        shutil.copy(WORKER, agent / "agent_worker.py")
         argv = ["docker", "run", "--rm", "-i", "--name", self.name,
                 "--network", "none", "--read-only", "--tmpfs", "/tmp:rw,noexec,nosuid,size=64m",
                 "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
@@ -123,7 +132,7 @@ class DockerRunner(_ProcRunner):
             pub = Path(self.tmp) / "public"
             shutil.copytree(public_dir, pub)
             argv += ["-v", f"{pub}:/public:ro"]
-        argv += [image, "python", "-I", "/agent/agent_worker.py", "/agent/solution.py"]
+        argv += [image, "python", "-I", "/opt/simcheck/agent_worker.py", "/agent/solution.py"]
         super().__init__(argv, {"PATH": "/usr/local/bin:/usr/bin:/bin"}, self.tmp, call_timeout)
         _LIVE_DOCKER.add(self)
 
@@ -212,6 +221,23 @@ def make_runner(solution_path, public_dir=None, prefer_docker=True, call_timeout
         raise RunnerError(f"SIMCHECK_REQUIRE_DOCKER=1 but Docker is not usable (daemon down or image {IMAGE} "
                           f"missing; build with `docker build -t {IMAGE} .`), or --no-docker was passed")
     return SubprocessRunner(solution_path, call_timeout=call_timeout)
+
+
+class Budgeted:
+    """Wraps any runner so every call shares one wall-clock deadline for a whole grading run."""
+
+    def __init__(self, runner, seconds):
+        self.runner, self.deadline, self.seconds = runner, time.monotonic() + seconds, seconds
+        self.isolation = getattr(runner, "isolation", "?")
+
+    def call(self, req, timeout=None):
+        left = self.deadline - time.monotonic()
+        if left <= 0:
+            raise RunnerError(f"total time limit of {self.seconds:.0f}s for grading exceeded")
+        return self.runner.call(req, timeout=min(timeout or left, left))
+
+    def close(self):
+        self.runner.close()
 
 
 class RemoteEstimator:

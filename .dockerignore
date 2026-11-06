@@ -1,0 +1,3 @@
+# Build context is only the worker. Never send keys, data or the venv to the Docker daemon.
+*
+!simcheck/agent_worker.py

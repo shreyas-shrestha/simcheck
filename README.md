@@ -6,12 +6,18 @@ Verifies agent-written GTSAM state estimators and route choices against simulate
 
 Agent code runs through `simcheck/sandbox.py`:
 
-- `DockerRunner` is the real boundary: `--network none`, read-only rootfs, only `solution.py` (and a copy
-  of `public/`) mounted read-only, no env vars, stdin/stdout protocol. Build the image with
-  `docker build -t simcheck-agent:latest .`
-- **Limitation:** on the build machine the Docker daemon was not running, so every result so far used
+- `DockerRunner` is the real boundary: `--network none`, read-only rootfs, unprivileged user, only
+  `solution.py` (and a copy of `public/`) mounted read-only, no env vars, stdin/stdout protocol. The
+  protocol server (`agent_worker.py`) is built into the image, so agent code cannot replace it, and
+  `.dockerignore` keeps `.env` and data out of the build. Build (and rebuild after worker changes) with
+  `docker build -t simcheck-agent:latest .`, then check it with
+  `SIMCHECK_REQUIRE_DOCKER=1 .venv/bin/python -m pytest -q simcheck/tests/test_docker.py`
+  (network blocked, no env vars, worker read-only, hangs killed, same output as in-process).
+- **Limitation:** Docker was not available on the build machine, so every result so far used
   `SubprocessRunner`, a separate `python -I` process with an empty environment. That is **not** a
   security boundary. Each `report.json` records which one was used in its `isolation` field.
+- Limits (`config.json` → `execution`): 30 s per message, 900 s for `choose_route`, 3600 s per grading run.
+  Tracebacks in feedback are stripped to file names, so no host paths reach the model.
 
 ## Layout
 
@@ -68,4 +74,17 @@ and cost, solution.py, report.json, log) plus `final_fresh/` and `summary.json` 
 Reruns resume: finished attempts are skipped, and saved responses are never re-requested. Spend is
 tracked across runs in `runs/cost_ledger.jsonl`. `--decision-only` puts the reference estimator in the
 route loop; those reports are labelled "decision-only grading". `fake-good` and `fake-learner` are
-offline models for testing the loop.
+offline models for testing the loop. Put keys in `.env` with `sh scripts/set_key.sh OPENAI_API_KEY`
+(or `GEMINI_API_KEY`); input is hidden and `.env` is gitignored.
+
+Collect everything into one table (`runs/results.md`, `runs/results.json`):
+
+```bash
+.venv/bin/python scripts/summarize.py
+```
+
+**Reading results.** Feedback reports measured rates with numbers (spec v3.1), so a revision can pass the
+stated-probability check by pasting the measured rate into its code, and the fresh-seed re-grade does not
+catch this because the world is the same on every seed. The table therefore shows whether a task passed on
+the first attempt, and lists numbers from the feedback that first appear as literals in revised code.
+A first-attempt pass is the strongest evidence.
