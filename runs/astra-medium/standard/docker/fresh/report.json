@@ -1,0 +1,152 @@
+{
+  "task": "standard",
+  "seed_set": "fresh",
+  "isolation": "docker --network none, read-only rootfs, public/ copy mounted ro, no env vars",
+  "thresholds_frozen": true,
+  "layers": {
+    "execution": {
+      "pass": true,
+      "determinism_max_pose_diff": 0.0,
+      "determinism_max_rel_cov_diff": 0.0
+    },
+    "structural": {
+      "provided": false,
+      "summary": null,
+      "notes": []
+    },
+    "accuracy": {
+      "pass": true,
+      "ate_m": 0.054423592642599515,
+      "reference_ate_m": 0.05442357739584645,
+      "bound_m": 0.33163536609376965,
+      "dropout_ate_m": 0.04401685742433991,
+      "reference_dropout_ate_m": 0.044015360037834704,
+      "per_scenario_ate_m": [
+        0.05611707754741177,
+        0.05180473121324698,
+        0.07049473680758919,
+        0.0600286561633005,
+        0.05780085614957363,
+        0.06046828855876391,
+        0.05950449578596871,
+        0.04679977786073196,
+        0.03861226440277402,
+        0.05634152626143528,
+        0.06364281164308597,
+        0.04946376358258917,
+        0.06631213328206403,
+        0.05033638852418741,
+        0.0482477113507575,
+        0.04594629044912805,
+        0.06292594696142406,
+        0.04678978557946396,
+        0.054267157617858865,
+        0.04990428202562766,
+        0.05037507235148344,
+        0.056216727502633,
+        0.06012436114230829,
+        0.06526291923679615,
+        0.06548950577093832,
+        0.04884568843737818,
+        0.05210737978148081,
+        0.044110745237721335,
+        0.04759857154603049,
+        0.046768126504232635
+      ]
+    },
+    "calibration": {
+      "K": 30,
+      "times": {
+        "end_of_dropout": {
+          "pass": true,
+          "covered": 27,
+          "coverage_p_value": 0.18782118685303992,
+          "overconfidence_ok": true,
+          "mean_nees": 3.4947844922709943,
+          "nees_lower_bound": 1.973210139189354,
+          "underconfidence_ok": true,
+          "mean_nll": -7.147310172780607,
+          "reference_mean_nll": -7.147452971056671,
+          "nll_bound": -6.147452971056671,
+          "nll_ok": true,
+          "mean_position_cov_trace_m2": 0.0017895896876426649,
+          "per_trajectory_coverage_diagnostic": 0.9421419530116389
+        },
+        "end_of_trajectory": {
+          "pass": true,
+          "covered": 27,
+          "coverage_p_value": 0.18782118685303992,
+          "overconfidence_ok": true,
+          "mean_nees": 3.4160085738517725,
+          "nees_lower_bound": 1.973210139189354,
+          "underconfidence_ok": true,
+          "mean_nll": -5.329750790539621,
+          "reference_mean_nll": -5.328887535466058,
+          "nll_bound": -4.328887535466058,
+          "nll_ok": true,
+          "mean_position_cov_trace_m2": 0.0053945761308232315,
+          "per_trajectory_coverage_diagnostic": 0.9421419530116389
+        }
+      },
+      "pass": true,
+      "wording": "no calibration inconsistency detected (K=30)"
+    },
+    "route": {
+      "pass": true,
+      "regret_outcome": "pass",
+      "T": 200,
+      "chosen": "B",
+      "stated_success_prob": 1.0,
+      "reasoning": "Selected using nominal propagation of this estimator's local Pose2 uncertainty, scheduled GPS and visible landmark updates, controller lookahead, actuator noise, wall clearance and time budget. Route B has length 14.88 m and minimum nominal robot-edge clearance 1.86 m. The probability is a Gaussian planning approximation, not a calibrated closed-loop Monte Carlo result; distance breaks close probability ties.",
+      "routes": {
+        "A": {
+          "success_rate": 0.71,
+          "wilson95": [
+            0.6436239464268834,
+            0.7684607310874219
+          ],
+          "collision_rate": 0.29
+        },
+        "B": {
+          "success_rate": 1.0,
+          "wilson95": [
+            0.9811539940816791,
+            1.0
+          ],
+          "collision_rate": 0.0
+        }
+      },
+      "diff_B_minus_A": 0.29000000000000004,
+      "diff_ci95": [
+        0.22999999999999998,
+        0.355
+      ],
+      "regret": 0.0,
+      "regret_ci95": [
+        0.0,
+        0.0
+      ],
+      "delta": 0.05,
+      "stated_check": {
+        "pass": true,
+        "stated": 1.0,
+        "estimated": 1.0,
+        "estimated_wilson95": [
+          0.9811539940816791,
+          1.0
+        ],
+        "abs_diff": 0.0,
+        "tolerance": 0.15
+      },
+      "mode": "submitted estimator in the loop",
+      "reference_estimator_rates": {
+        "A": 0.715,
+        "B": 1.0
+      }
+    }
+  },
+  "accepted": true,
+  "reward": 1.0,
+  "feedback": [],
+  "seconds": 55.79796012500083
+}

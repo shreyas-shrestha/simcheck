@@ -1,0 +1,46 @@
+{
+  "model": "fake-good",
+  "requested_model": "fake-good",
+  "task": "prior_needed",
+  "rounds": [
+    {
+      "attempt": 1,
+      "reward": 0.7,
+      "accepted": false,
+      "layers": {
+        "execution": true,
+        "accuracy": true,
+        "calibration": true,
+        "route": false
+      }
+    },
+    {
+      "attempt": 2,
+      "reward": 0.7,
+      "accepted": false,
+      "layers": {
+        "execution": true,
+        "accuracy": true,
+        "calibration": true,
+        "route": false
+      }
+    },
+    {
+      "attempt": 3,
+      "reward": 0.7,
+      "accepted": false,
+      "layers": {
+        "execution": true,
+        "accuracy": true,
+        "calibration": true,
+        "route": false
+      }
+    }
+  ],
+  "final_fresh": {
+    "attempt": 3,
+    "reward": 0.7,
+    "accepted": false
+  },
+  "decision_only": false
+}

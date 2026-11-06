@@ -1,0 +1,11 @@
+{
+  "usage": {
+    "input_tokens": 0,
+    "output_tokens": 0
+  },
+  "usd": 0.0,
+  "seconds": 0.0008742079990042839,
+  "meta": {
+    "variant": "cov_x10"
+  }
+}

@@ -1,0 +1,155 @@
+{
+  "task": "standard",
+  "seed_set": "eval",
+  "isolation": "NONE: subprocess fallback (Docker unavailable); not a security boundary",
+  "thresholds_frozen": true,
+  "layers": {
+    "execution": {
+      "pass": true,
+      "determinism_max_pose_diff": 0.0,
+      "determinism_max_rel_cov_diff": 0.0
+    },
+    "structural": {
+      "provided": false,
+      "summary": null,
+      "notes": []
+    },
+    "accuracy": {
+      "pass": true,
+      "ate_m": 0.05713043624717055,
+      "reference_ate_m": 0.05713043624717055,
+      "bound_m": 0.3356956543707558,
+      "dropout_ate_m": 0.04311700786300339,
+      "reference_dropout_ate_m": 0.04311700786300339,
+      "per_scenario_ate_m": [
+        0.06021910089336304,
+        0.08476967506767083,
+        0.04556995241768408,
+        0.05894520689066432,
+        0.04640741260723716,
+        0.0514528372514346,
+        0.05240492872414742,
+        0.06000366129777933,
+        0.058182755275722996,
+        0.05766925632324798,
+        0.05059927369216176,
+        0.053306355064698704,
+        0.0676158736346833,
+        0.06481588396650141,
+        0.05755967949925309,
+        0.04834831262937184,
+        0.051055622714519404,
+        0.06726491329867931,
+        0.05603009211959431,
+        0.05595282722503482,
+        0.05555936504126829,
+        0.05504743324005429,
+        0.05077186988733874,
+        0.05881647211099782,
+        0.048889698414859385,
+        0.05544392552466098,
+        0.06583431652491678,
+        0.05106705373315246,
+        0.06862012611044355,
+        0.05568920623397477
+      ]
+    },
+    "calibration": {
+      "K": 30,
+      "times": {
+        "end_of_dropout": {
+          "pass": true,
+          "covered": 29,
+          "coverage_p_value": 0.7853612360570628,
+          "overconfidence_ok": true,
+          "mean_nees": 2.7418268055082584,
+          "nees_lower_bound": 1.973210139189354,
+          "underconfidence_ok": true,
+          "mean_nll": -7.5223018946412,
+          "reference_mean_nll": -7.5223018946412,
+          "nll_bound": -6.5223018946412,
+          "nll_ok": true,
+          "mean_position_cov_trace_m2": 0.0017920148435080947,
+          "per_trajectory_coverage_diagnostic": 0.9558606530762589
+        },
+        "end_of_trajectory": {
+          "pass": true,
+          "covered": 29,
+          "coverage_p_value": 0.7853612360570628,
+          "overconfidence_ok": true,
+          "mean_nees": 3.2987711314529196,
+          "nees_lower_bound": 1.973210139189354,
+          "underconfidence_ok": true,
+          "mean_nll": -5.378533164252527,
+          "reference_mean_nll": -5.378533164252527,
+          "nll_bound": -4.378533164252527,
+          "nll_ok": true,
+          "mean_position_cov_trace_m2": 0.005405594719883309,
+          "per_trajectory_coverage_diagnostic": 0.9558606530762589
+        }
+      },
+      "pass": true,
+      "wording": "no calibration inconsistency detected (K=30)"
+    },
+    "route": {
+      "pass": false,
+      "regret_outcome": "fail",
+      "T": 200,
+      "chosen": "A",
+      "stated_success_prob": 0.97,
+      "reasoning": "fake model (always_A)",
+      "routes": {
+        "A": {
+          "success_rate": 0.765,
+          "wilson95": [
+            0.7015850701327535,
+            0.8184265467305365
+          ],
+          "collision_rate": 0.235
+        },
+        "B": {
+          "success_rate": 1.0,
+          "wilson95": [
+            0.9811539940816791,
+            1.0
+          ],
+          "collision_rate": 0.0
+        }
+      },
+      "diff_B_minus_A": 0.235,
+      "diff_ci95": [
+        0.18000000000000005,
+        0.29500000000000004
+      ],
+      "regret": 0.235,
+      "regret_ci95": [
+        0.18000000000000005,
+        0.29500000000000004
+      ],
+      "delta": 0.05,
+      "stated_check": {
+        "pass": false,
+        "stated": 0.97,
+        "estimated": 0.765,
+        "estimated_wilson95": [
+          0.7015850701327535,
+          0.8184265467305365
+        ],
+        "abs_diff": 0.20499999999999996,
+        "tolerance": 0.15
+      },
+      "mode": "submitted estimator in the loop",
+      "reference_estimator_rates": {
+        "A": 0.765,
+        "B": 1.0
+      }
+    }
+  },
+  "accepted": false,
+  "reward": 0.7,
+  "feedback": [
+    "Route: chose A, success rates with your estimator in the loop {'A': 0.765, 'B': 1.0} over T=200 paired trials; regret 0.235, 95% CI [0.18, 0.295], tolerance 0.05 -> fail.",
+    "Route: stated success probability 0.97 differs from the measured rate 0.765 (95% CI [0.702, 0.818]) by more than 0.15."
+  ],
+  "seconds": 13.283745707998605
+}

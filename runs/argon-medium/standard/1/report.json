@@ -1,0 +1,15 @@
+{
+  "task": "standard",
+  "seed_set": "eval",
+  "accepted": false,
+  "reward": 0.0,
+  "layers": {
+    "execution": {
+      "pass": false,
+      "error": "no parseable ```python block defining make_estimator found in the response"
+    }
+  },
+  "feedback": [
+    "Execution failed: no parseable ```python block defining make_estimator found in the response"
+  ]
+}

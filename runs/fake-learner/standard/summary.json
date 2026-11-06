@@ -1,0 +1,46 @@
+{
+  "model": "fake-learner",
+  "requested_model": "fake-learner",
+  "task": "standard",
+  "rounds": [
+    {
+      "attempt": 1,
+      "reward": 0.6,
+      "accepted": false,
+      "layers": {
+        "execution": true,
+        "accuracy": true,
+        "calibration": false,
+        "route": true
+      }
+    },
+    {
+      "attempt": 2,
+      "reward": 0.7,
+      "accepted": false,
+      "layers": {
+        "execution": true,
+        "accuracy": true,
+        "calibration": true,
+        "route": false
+      }
+    },
+    {
+      "attempt": 3,
+      "reward": 1.0,
+      "accepted": true,
+      "layers": {
+        "execution": true,
+        "accuracy": true,
+        "calibration": true,
+        "route": true
+      }
+    }
+  ],
+  "final_fresh": {
+    "attempt": 3,
+    "reward": 1.0,
+    "accepted": true
+  },
+  "decision_only": false
+}

@@ -1,0 +1,6 @@
+{
+  "provider": "fake",
+  "requested_model": "fake-learner",
+  "settings": {},
+  "system": "You are an expert in robot state estimation and GTSAM. You write complete, correct, runnable Python."
+}

@@ -1,0 +1,4 @@
+[trap_units/fresh] layer 0+: running 30 datasets
+[trap_units/fresh] layers 2-3
+[trap_units/fresh] layer 4: 200 paired trials per route
+route trials 25/200

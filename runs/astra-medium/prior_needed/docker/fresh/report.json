@@ -1,0 +1,152 @@
+{
+  "task": "prior_needed",
+  "seed_set": "fresh",
+  "isolation": "docker --network none, read-only rootfs, public/ copy mounted ro, no env vars",
+  "thresholds_frozen": true,
+  "layers": {
+    "execution": {
+      "pass": true,
+      "determinism_max_pose_diff": 0.0,
+      "determinism_max_rel_cov_diff": 0.0
+    },
+    "structural": {
+      "provided": false,
+      "summary": null,
+      "notes": []
+    },
+    "accuracy": {
+      "pass": true,
+      "ate_m": 0.3673094585764293,
+      "reference_ate_m": 0.36730945857642916,
+      "bound_m": 0.8009641878646437,
+      "dropout_ate_m": null,
+      "reference_dropout_ate_m": null,
+      "per_scenario_ate_m": [
+        0.5366324054347141,
+        0.32563283160006906,
+        0.5713081549998715,
+        0.7494635950610474,
+        0.733661498776489,
+        0.14349198515480321,
+        0.47528448000679163,
+        0.39476761062527993,
+        0.41398622721283285,
+        0.20238126154287545,
+        0.4579727570249282,
+        0.27151093142647664,
+        0.44111056244901986,
+        0.12953930901323485,
+        0.397414072639095,
+        0.5162869058222548,
+        0.37521549828173456,
+        0.20655625592648005,
+        0.25143440467682726,
+        0.4806825840633888,
+        0.5399231787906795,
+        0.3062015080339957,
+        0.20214916315247883,
+        0.16686495734657592,
+        0.2927347672306346,
+        0.24130871687302388,
+        0.1719055233849974,
+        0.19980167324443612,
+        0.6252166497634319,
+        0.19884428773441326
+      ]
+    },
+    "calibration": {
+      "K": 30,
+      "times": {
+        "end_of_dropout": {
+          "pass": true,
+          "covered": 27,
+          "coverage_p_value": 0.18782118685303992,
+          "overconfidence_ok": true,
+          "mean_nees": 3.3792171917037357,
+          "nees_lower_bound": 1.973210139189354,
+          "underconfidence_ok": true,
+          "mean_nll": -1.5387376234965933,
+          "reference_mean_nll": -1.5387376234966,
+          "nll_bound": -0.5387376234965999,
+          "nll_ok": true,
+          "mean_position_cov_trace_m2": 0.18582432097057897,
+          "per_trajectory_coverage_diagnostic": 0.933799512210182
+        },
+        "end_of_trajectory": {
+          "pass": true,
+          "covered": 30,
+          "coverage_p_value": 1.0,
+          "overconfidence_ok": true,
+          "mean_nees": 3.18427793402927,
+          "nees_lower_bound": 1.973210139189354,
+          "underconfidence_ok": true,
+          "mean_nll": -0.6749849264399911,
+          "reference_mean_nll": -0.6749849264400828,
+          "nll_bound": 0.3250150735599172,
+          "nll_ok": true,
+          "mean_position_cov_trace_m2": 0.5310202810846232,
+          "per_trajectory_coverage_diagnostic": 0.933799512210182
+        }
+      },
+      "pass": true,
+      "wording": "no calibration inconsistency detected (K=30)"
+    },
+    "route": {
+      "pass": true,
+      "regret_outcome": "pass",
+      "T": 200,
+      "chosen": "B",
+      "stated_success_prob": 0.474365234375,
+      "reasoning": "Choose B; route length 14.88 m. Model-averaged collision-free arrival estimates: A: 0.273, B: 0.474. Deterministic rollouts use the same odometry-composition mean as the GTSAM estimator, with initial, actuator and odometry uncertainty, finite wall segments, robot radius and step budget. Without absolute observations, endpoint drift remains important even when the route avoids the narrow passage. Terminal pure-pursuit behavior is not completely specified: estimated-arrival stopping gives 0.246, whereas continued pursuit gives 0.703. The reported probability averages these interpretations instead of assuming repeated goal approaches are always available. Sampling error is about 0.006; terminal-control and simulator-model uncertainty are larger.",
+      "routes": {
+        "A": {
+          "success_rate": 0.285,
+          "wilson95": [
+            0.22694905173277297,
+            0.3511547308121051
+          ],
+          "collision_rate": 0.6
+        },
+        "B": {
+          "success_rate": 0.54,
+          "wilson95": [
+            0.4708216309361468,
+            0.6076706885903875
+          ],
+          "collision_rate": 0.005
+        }
+      },
+      "diff_B_minus_A": 0.25500000000000006,
+      "diff_ci95": [
+        0.18,
+        0.33499999999999996
+      ],
+      "regret": 0.0,
+      "regret_ci95": [
+        0.0,
+        0.0
+      ],
+      "delta": 0.05,
+      "stated_check": {
+        "pass": true,
+        "stated": 0.474365234375,
+        "estimated": 0.54,
+        "estimated_wilson95": [
+          0.4708216309361468,
+          0.6076706885903875
+        ],
+        "abs_diff": 0.06563476562500004,
+        "tolerance": 0.15
+      },
+      "mode": "submitted estimator in the loop",
+      "reference_estimator_rates": {
+        "A": 0.285,
+        "B": 0.54
+      }
+    }
+  },
+  "accepted": true,
+  "reward": 1.0,
+  "feedback": [],
+  "seconds": 32.06976291600222
+}

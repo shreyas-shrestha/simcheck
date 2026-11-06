@@ -1,0 +1,29 @@
+{
+  "usage": {
+    "input_tokens": 8652,
+    "output_tokens": 3579
+  },
+  "usd": 0.26547,
+  "seconds": 65.55187775000013,
+  "meta": {
+    "id": "chatcmpl-EhJNsLvxVPQnUZsS9wQhDTWX5M1mf",
+    "model": "gpt-6-astra",
+    "system_fingerprint": null,
+    "usage": {
+      "prompt_tokens": 8652,
+      "completion_tokens": 3579,
+      "total_tokens": 12231,
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "cache_write_tokens": 8649,
+        "audio_tokens": 0
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 326,
+        "audio_tokens": 0,
+        "accepted_prediction_tokens": 0,
+        "rejected_prediction_tokens": 0
+      }
+    }
+  }
+}

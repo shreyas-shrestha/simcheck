@@ -1,0 +1,239 @@
+[
+  {
+    "model": "argon-medium",
+    "model_id": "gemini-4-argon",
+    "task": "prior_needed",
+    "settings": {
+      "maxOutputTokens": 32000,
+      "thinkingConfig": {
+        "thinkingLevel": "medium"
+      }
+    },
+    "status": "done",
+    "attempts": 1,
+    "rewards": [
+      1.0
+    ],
+    "accepted_first_attempt": true,
+    "accepted_eval": true,
+    "accepted_fresh": true,
+    "fresh_reward": 1.0,
+    "feedback_numbers_in_code": [],
+    "route": "B",
+    "stated": 0.63,
+    "measured": {
+      "A": 0.285,
+      "B": 0.54
+    },
+    "usd": 0.057,
+    "output_tokens": 4222,
+    "isolation": "NONE: subprocess fallback (Docker unavailable); not a security boundary"
+  },
+  {
+    "model": "argon-medium",
+    "model_id": "gemini-4-argon",
+    "task": "standard",
+    "settings": {
+      "maxOutputTokens": 32000,
+      "thinkingConfig": {
+        "thinkingLevel": "medium"
+      }
+    },
+    "status": "done",
+    "attempts": 2,
+    "rewards": [
+      0.0,
+      1.0
+    ],
+    "accepted_first_attempt": false,
+    "accepted_eval": true,
+    "accepted_fresh": true,
+    "fresh_reward": 1.0,
+    "feedback_numbers_in_code": [],
+    "route": "B",
+    "stated": 1.0,
+    "measured": {
+      "A": 0.71,
+      "B": 1.0
+    },
+    "usd": 0.223,
+    "output_tokens": 14861,
+    "isolation": "NONE: subprocess fallback (Docker unavailable); not a security boundary"
+  },
+  {
+    "model": "argon-medium",
+    "model_id": "gemini-4-argon",
+    "task": "trap_frame",
+    "settings": {
+      "maxOutputTokens": 32000,
+      "thinkingConfig": {
+        "thinkingLevel": "medium"
+      }
+    },
+    "status": "done",
+    "attempts": 2,
+    "rewards": [
+      0.0,
+      1.0
+    ],
+    "accepted_first_attempt": false,
+    "accepted_eval": true,
+    "accepted_fresh": true,
+    "fresh_reward": 1.0,
+    "feedback_numbers_in_code": [],
+    "route": "B",
+    "stated": 1.0,
+    "measured": {
+      "A": 0.71,
+      "B": 1.0
+    },
+    "usd": 0.207,
+    "output_tokens": 12075,
+    "isolation": "NONE: subprocess fallback (Docker unavailable); not a security boundary"
+  },
+  {
+    "model": "argon-medium",
+    "model_id": "gemini-4-argon",
+    "task": "trap_units",
+    "settings": {
+      "maxOutputTokens": 32000,
+      "thinkingConfig": {
+        "thinkingLevel": "medium"
+      }
+    },
+    "status": "done",
+    "attempts": 2,
+    "rewards": [
+      0.0,
+      1.0
+    ],
+    "accepted_first_attempt": false,
+    "accepted_eval": true,
+    "accepted_fresh": true,
+    "fresh_reward": 1.0,
+    "feedback_numbers_in_code": [],
+    "route": "B",
+    "stated": 0.98,
+    "measured": {
+      "A": 0.71,
+      "B": 1.0
+    },
+    "usd": 0.137,
+    "output_tokens": 5925,
+    "isolation": "NONE: subprocess fallback (Docker unavailable); not a security boundary"
+  },
+  {
+    "model": "astra-medium",
+    "model_id": "gpt-6-astra",
+    "task": "prior_needed",
+    "settings": {
+      "max_completion_tokens": 32000,
+      "reasoning_effort": "medium"
+    },
+    "status": "done",
+    "attempts": 3,
+    "rewards": [
+      0.7,
+      0.7,
+      1.0
+    ],
+    "accepted_first_attempt": false,
+    "accepted_eval": true,
+    "accepted_fresh": true,
+    "fresh_reward": 1.0,
+    "feedback_numbers_in_code": [],
+    "route": "B",
+    "stated": 0.474365234375,
+    "measured": {
+      "A": 0.285,
+      "B": 0.54
+    },
+    "usd": 0.751,
+    "output_tokens": 10727,
+    "isolation": "NONE: subprocess fallback (Docker unavailable); not a security boundary"
+  },
+  {
+    "model": "astra-medium",
+    "model_id": "gpt-6-astra",
+    "task": "standard",
+    "settings": {
+      "max_completion_tokens": 32000,
+      "reasoning_effort": "medium"
+    },
+    "status": "done",
+    "attempts": 1,
+    "rewards": [
+      1.0
+    ],
+    "accepted_first_attempt": true,
+    "accepted_eval": true,
+    "accepted_fresh": true,
+    "fresh_reward": 1.0,
+    "feedback_numbers_in_code": [],
+    "route": "B",
+    "stated": 1.0,
+    "measured": {
+      "A": 0.71,
+      "B": 1.0
+    },
+    "usd": 0.308,
+    "output_tokens": 3787,
+    "isolation": "NONE: subprocess fallback (Docker unavailable); not a security boundary"
+  },
+  {
+    "model": "astra-medium",
+    "model_id": "gpt-6-astra",
+    "task": "trap_frame",
+    "settings": {
+      "max_completion_tokens": 32000,
+      "reasoning_effort": "medium"
+    },
+    "status": "done",
+    "attempts": 1,
+    "rewards": [
+      1.0
+    ],
+    "accepted_first_attempt": true,
+    "accepted_eval": true,
+    "accepted_fresh": true,
+    "fresh_reward": 1.0,
+    "feedback_numbers_in_code": [],
+    "route": "B",
+    "stated": 0.9999984613022608,
+    "measured": {
+      "A": 0.71,
+      "B": 1.0
+    },
+    "usd": 0.347,
+    "output_tokens": 4560,
+    "isolation": "NONE: subprocess fallback (Docker unavailable); not a security boundary"
+  },
+  {
+    "model": "astra-medium",
+    "model_id": "gpt-6-astra",
+    "task": "trap_units",
+    "settings": {
+      "max_completion_tokens": 32000,
+      "reasoning_effort": "medium"
+    },
+    "status": "done",
+    "attempts": 1,
+    "rewards": [
+      1.0
+    ],
+    "accepted_first_attempt": true,
+    "accepted_eval": true,
+    "accepted_fresh": true,
+    "fresh_reward": 1.0,
+    "feedback_numbers_in_code": [],
+    "route": "B",
+    "stated": 1.0,
+    "measured": {
+      "A": 0.71,
+      "B": 1.0
+    },
+    "usd": 0.306,
+    "output_tokens": 3795,
+    "isolation": "NONE: subprocess fallback (Docker unavailable); not a security boundary"
+  }
+]

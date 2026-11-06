@@ -1,0 +1,350 @@
+```python
+"""Odometry-only GTSAM estimator and deterministic, simulation-based route choice."""
+
+import copy
+import math
+
+import gtsam
+import numpy as np
+
+
+def _wrap(angle):
+    return (angle + np.pi) % (2.0 * np.pi) - np.pi
+
+
+def make_estimator(public_spec):
+    return Estimator(public_spec)
+
+
+class Estimator:
+    """A prior and a chain of body-frame Pose2 odometry factors.
+
+    Actuator uncertainty is not added to the odometry factors: the odometer
+    measures the realized motion, including actuator disturbances.
+    """
+
+    def __init__(self, public_spec):
+        self.spec = copy.deepcopy(public_spec)
+        initial = self.spec["initial_pose"]
+        self.pose = gtsam.Pose2(*map(float, initial["mean"]))
+
+        self.odom_noise = gtsam.noiseModel.Diagonal.Sigmas(
+            np.asarray(self.spec["sensor_noise_std"]["odom"], dtype=float)
+        )
+        prior_noise = gtsam.noiseModel.Diagonal.Variances(
+            np.asarray(initial["cov_diag_variances"], dtype=float)
+        )
+
+        self.isam = gtsam.ISAM2()
+        graph = gtsam.NonlinearFactorGraph()
+        values = gtsam.Values()
+        graph.add(gtsam.PriorFactorPose2(0, self.pose, prior_noise))
+        values.insert(0, self.pose)
+        self.isam.update(graph, values)
+
+        self.last_step = -1
+        self.last_result = None
+
+        # Measurement conversions only; noise parameters are already SI.
+        units = self.spec["input_units"]
+        self.translation_scale = {
+            "m": 1.0, "cm": 0.01, "mm": 0.001
+        }[units["odom"]]
+        self.angle_scale = {
+            "rad": 1.0, "deg": math.pi / 180.0
+        }[units["bearing"]]
+
+    def step(self, new_measurements):
+        k = int(new_measurements["step"])
+        if k == self.last_step:
+            return (
+                self.last_result[0].copy(),
+                self.last_result[1].copy(),
+            )
+        if k != self.last_step + 1:
+            raise ValueError("Measurements must arrive consecutively, starting at step 0.")
+
+        if new_measurements.get("gps") is not None:
+            raise ValueError("This scenario specifies no GPS measurements.")
+        if new_measurements.get("landmarks"):
+            raise ValueError("This scenario specifies no landmark measurements.")
+
+        odom = new_measurements.get("odom")
+        if k == 0:
+            if odom is not None:
+                raise ValueError("Step 0 must not contain an odometry transition.")
+        else:
+            if odom is None:
+                raise ValueError("A noninitial step requires an odometry transition.")
+
+            relative = gtsam.Pose2(
+                float(odom["dx"]) * self.translation_scale,
+                float(odom["dy"]) * self.translation_scale,
+                float(odom["dtheta"]) * self.angle_scale,
+            )
+            graph = gtsam.NonlinearFactorGraph()
+            values = gtsam.Values()
+            graph.add(
+                gtsam.BetweenFactorPose2(k - 1, k, relative, self.odom_noise)
+            )
+            values.insert(k, self.pose.compose(relative))
+            self.isam.update(graph, values)
+
+        self.pose = self.isam.calculateEstimatePose2(k)
+        covariance = np.asarray(
+            self.isam.marginalCovariance(k), dtype=float
+        )
+        covariance = 0.5 * (covariance + covariance.T)
+        pose = np.array(
+            [self.pose.x(), self.pose.y(), self.pose.theta()], dtype=float
+        )
+
+        self.last_step = k
+        self.last_result = (pose.copy(), covariance.copy())
+        return pose, covariance
+
+
+def _point_segment_distance_squared(point, start, end):
+    delta = end - start
+    denominator = np.sum(delta * delta, axis=-1)
+    numerator = np.sum((point - start) * delta, axis=-1)
+    fraction = np.clip(
+        numerator / np.maximum(denominator, np.finfo(float).tiny), 0.0, 1.0
+    )
+    difference = point - (start + fraction[..., None] * delta)
+    return np.sum(difference * difference, axis=-1)
+
+
+def _cross(a, b):
+    return a[..., 0] * b[..., 1] - a[..., 1] * b[..., 0]
+
+
+def _swept_collision(start, end, walls, radius):
+    """Disk/segment collision test over each simulated motion chord."""
+    collision = np.zeros(len(start), dtype=bool)
+    for wall in walls:
+        a = wall[:2]
+        b = wall[2:]
+        motion = end - start
+        barrier = b - a
+
+        c1 = _cross(motion, a - start)
+        c2 = _cross(motion, b - start)
+        c3 = _cross(barrier, start - a)
+        c4 = _cross(barrier, end - a)
+
+        box_overlap = np.all(
+            np.maximum(np.minimum(start, end), np.minimum(a, b))
+            <= np.minimum(np.maximum(start, end), np.maximum(a, b)),
+            axis=1,
+        )
+        intersects = (
+            (c1 * c2 <= 0.0) & (c3 * c4 <= 0.0) & box_overlap
+        )
+
+        distance_squared = np.minimum.reduce([
+            _point_segment_distance_squared(start, a, b),
+            _point_segment_distance_squared(end, a, b),
+            _point_segment_distance_squared(a, start, end),
+            _point_segment_distance_squared(b, start, end),
+        ])
+        collision |= intersects | (distance_squared <= radius * radius)
+    return collision
+
+
+def _route_probability(spec, route, trials=2048):
+    """Approximate closed-loop success probability.
+
+    Uses the configured pure-pursuit parameters, Gaussian disturbances, and
+    odometry-only pose composition. Pose composition is exactly the MAP mean
+    of the estimator's unlooped GTSAM chain. The probability is an approximation
+    because the contract does not specify every controller implementation detail.
+    """
+    # Local fixed seed: reproducible, with no persistent state between calls.
+    rng = np.random.default_rng(1729)
+    route = np.asarray(route, dtype=float)
+    if route.ndim != 2 or route.shape[1] != 2 or len(route) == 0:
+        raise ValueError("Each route must contain two-dimensional waypoints.")
+
+    # Remove adjacent duplicate waypoints.
+    keep = np.r_[True, np.linalg.norm(np.diff(route, axis=0), axis=1) > 0.0]
+    route = route[keep]
+    segment = np.diff(route, axis=0)
+    lengths = np.linalg.norm(segment, axis=1)
+    cumulative = np.r_[0.0, np.cumsum(lengths)]
+    total_length = float(cumulative[-1])
+
+    initial = spec["initial_pose"]
+    mean = np.asarray(initial["mean"], dtype=float)
+    std = np.sqrt(np.asarray(initial["cov_diag_variances"], dtype=float))
+    truth = mean + rng.standard_normal((trials, 3)) * std
+    truth[:, 2] = _wrap(truth[:, 2])
+    estimate = np.tile(mean, (trials, 1))
+
+    dt = float(spec["dt"])
+    controller = spec["controller"]
+    if controller["type"] != "pure_pursuit":
+        raise ValueError("Expected a pure-pursuit controller.")
+    speed = float(controller["v"])
+    lookahead = float(controller["lookahead"])
+    omega_max = float(controller["omega_max"])
+    actuator = spec["actuator_noise_std"]
+    odom_std = np.asarray(spec["sensor_noise_std"]["odom"], dtype=float)
+    tolerance = float(spec["arrival_tolerance"])
+    radius = float(spec["robot_radius"])
+    walls = np.asarray(spec["walls"], dtype=float).reshape(-1, 4)
+    goal = route[-1]
+
+    initial_collision = _swept_collision(
+        truth[:, :2], truth[:, :2], walls, radius
+    )
+    success = (
+        np.linalg.norm(truth[:, :2] - goal, axis=1) <= tolerance
+    ) & ~initial_collision
+    active = ~initial_collision & ~success
+    progress = np.zeros(trials)
+
+    # max_steps is treated as the number of poses, including the initial pose.
+    for _ in range(max(0, int(spec["max_steps"]) - 1)):
+        active &= np.linalg.norm(estimate[:, :2] - goal, axis=1) > tolerance
+        if not np.any(active) or len(route) < 2:
+            break
+
+        # Project onto the route, then select an arclength lookahead target.
+        displacement = estimate[:, None, :2] - route[None, :-1, :]
+        fraction = np.clip(
+            np.sum(displacement * segment[None, :, :], axis=2)
+            / (lengths[None, :] ** 2),
+            0.0,
+            1.0,
+        )
+        projection = (
+            route[None, :-1, :]
+            + fraction[:, :, None] * segment[None, :, :]
+        )
+        distance_squared = np.sum(
+            (estimate[:, None, :2] - projection) ** 2, axis=2
+        )
+        closest = np.argmin(distance_squared, axis=1)
+        rows = np.arange(trials)
+        projected_progress = (
+            cumulative[closest] + fraction[rows, closest] * lengths[closest]
+        )
+        progress = np.maximum(progress, projected_progress)
+        target_progress = np.minimum(progress + lookahead, total_length)
+        target_segment = np.minimum(
+            np.searchsorted(cumulative, target_progress, side="right") - 1,
+            len(lengths) - 1,
+        )
+        target_fraction = (
+            target_progress - cumulative[target_segment]
+        ) / lengths[target_segment]
+        target = (
+            route[target_segment]
+            + target_fraction[:, None] * segment[target_segment]
+        )
+
+        toward = target - estimate[:, :2]
+        squared_distance = np.sum(toward * toward, axis=1)
+        lateral = (
+            -np.sin(estimate[:, 2]) * toward[:, 0]
+            + np.cos(estimate[:, 2]) * toward[:, 1]
+        )
+        commanded_omega = np.clip(
+            2.0 * speed * lateral / np.maximum(squared_distance, 1e-12),
+            -omega_max,
+            omega_max,
+        )
+
+        realized_v = (
+            speed + float(actuator["v"]) * rng.standard_normal(trials)
+        )
+        realized_omega = (
+            commanded_omega
+            + float(actuator["omega"]) * rng.standard_normal(trials)
+        )
+        turn = realized_omega * dt
+
+        # Exact constant-twist motion, expressed in the old robot frame.
+        forward = realized_v * dt * np.sinc(turn / np.pi)
+        sideways = (
+            realized_v * dt
+            * (0.5 * turn)
+            * np.sinc(turn / (2.0 * np.pi)) ** 2
+        )
+        ct, st = np.cos(truth[:, 2]), np.sin(truth[:, 2])
+        next_truth = truth.copy()
+        next_truth[:, 0] += ct * forward - st * sideways
+        next_truth[:, 1] += st * forward + ct * sideways
+        next_truth[:, 2] = _wrap(truth[:, 2] + turn)
+        next_truth[~active] = truth[~active]
+
+        # Right-local Pose2 perturbation of the realized relative pose.
+        noise = rng.standard_normal((trials, 3)) * odom_std
+        cr, sr = np.cos(turn), np.sin(turn)
+        measured_x = forward + cr * noise[:, 0] - sr * noise[:, 1]
+        measured_y = sideways + sr * noise[:, 0] + cr * noise[:, 1]
+        measured_theta = turn + noise[:, 2]
+
+        ce, se = np.cos(estimate[:, 2]), np.sin(estimate[:, 2])
+        next_estimate = estimate.copy()
+        next_estimate[:, 0] += ce * measured_x - se * measured_y
+        next_estimate[:, 1] += se * measured_x + ce * measured_y
+        next_estimate[:, 2] = _wrap(estimate[:, 2] + measured_theta)
+        next_estimate[~active] = estimate[~active]
+
+        collided = _swept_collision(
+            truth[:, :2], next_truth[:, :2], walls, radius
+        ) & active
+        reached = (
+            np.linalg.norm(next_truth[:, :2] - goal, axis=1) <= tolerance
+        ) & active & ~collided
+        success |= reached
+        active &= ~collided & ~reached
+        truth, estimate = next_truth, next_estimate
+
+    return float(np.mean(success)), total_length
+
+
+def choose_route(public_spec):
+    spec = copy.deepcopy(public_spec)
+    results = {
+        name: _route_probability(spec, points)
+        for name, points in spec["routes"].items()
+    }
+    best_probability = max(value[0] for value in results.values())
+
+    # Treat differences within roughly two Monte Carlo standard errors as
+    # close ties, and resolve those by route length.
+    trials = 2048
+    standard_error = math.sqrt(
+        best_probability * (1.0 - best_probability) / trials
+    )
+    tie_width = 2.0 * standard_error
+    candidates = [
+        name for name, (probability, _) in results.items()
+        if best_probability - probability <= tie_width
+    ]
+    chosen = min(candidates, key=lambda name: (results[name][1], name))
+    probability, _ = results[chosen]
+
+    summary = "; ".join(
+        f"{name}: estimated success {p:.3f}, length {length:.2f} m"
+        for name, (p, length) in sorted(results.items())
+    )
+    return {
+        "route": chosen,
+        "success_prob": probability,
+        "reasoning": (
+            "Deterministic Monte Carlo approximation with the odometry-only "
+            "estimator in the pure-pursuit feedback loop, sampled initial, "
+            "actuator and odometry uncertainty, swept robot-wall collision "
+            "checks, and true-position arrival checks. " + summary + ". "
+            "Without GPS or landmarks, heading uncertainty accumulates into "
+            "lateral position uncertainty; nominal clearance alone is not "
+            "a reliable success measure. Distance breaks statistically close "
+            "ties. Probabilities are approximate because detailed controller "
+            "target-selection and termination rules are not specified."
+        ),
+    }
+```
