@@ -98,12 +98,16 @@ def test_unpriced_model_refused_before_any_call(tmp_path, monkeypatch):
 V31_ADDITIONS = ("not in the world frame", "sampled from the stated prior", "always in SI units", "Grading:")
 
 
-def test_v31_prompt_is_byte_identical_to_original_run():
+def test_v31_prompt_is_byte_identical_to_original_run(monkeypatch):
     # runs/astra/standard/1/prompt.md is the saved prompt of the original v3.1 Astra run. Repeats must send the
-    # exact same bytes, so the default (v3.1) prompt is pinned to it.
+    # exact same bytes, so the v3.1 config's prompt is pinned to it.
     from simcheck import generator
+    monkeypatch.setenv("SIMCHECK_CONFIG", "config.json")
     assert generator.task_md_version() == "v3.1"
-    saved = (harness.ROOT / "runs" / "astra" / "standard" / "1" / "prompt.md").read_text()
+    p = harness.ROOT / "runs" / "astra" / "standard" / "1" / "prompt.md"
+    if not p.exists():
+        pytest.skip("original run outputs are on the results-v3.1 branch, not in this checkout")
+    saved = p.read_text()
     assert harness.build_prompt("standard") == saved
     assert not any(a in saved for a in V31_ADDITIONS)
 
@@ -119,7 +123,7 @@ def test_v31_task_md_matches_original_generator_for_every_task():
     old = types.ModuleType("generator_v31")
     old.__dict__["__file__"] = generator.__file__
     exec(compile(src.stdout, "generator_v31", "exec"), old.__dict__)
-    for task in V.TASKS:
+    for task in ("standard", "trap_units", "trap_frame", "prior_needed"):  # the v3.1 tasks
         spec = V.task_spec(task)
         assert generator.task_md(spec, "v3.1") == old.task_md(spec), task
 
